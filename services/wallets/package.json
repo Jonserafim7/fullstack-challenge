@@ -9,13 +9,21 @@
     "test:e2e": "bun test tests/e2e"
   },
   "dependencies": {
+    "@crash/money": "workspace:*",
+    "@mikro-orm/core": "^6.4.0",
+    "@mikro-orm/migrations": "^6.4.0",
+    "@mikro-orm/nestjs": "^6.1.1",
+    "@mikro-orm/postgresql": "^6.4.0",
     "@nestjs/common": "^11.1.17",
     "@nestjs/core": "^11.1.17",
     "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/swagger": "^11.0.0",
+    "jose": "^5.9.6",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "bun-types": "latest",
     "typescript": "^5.8.3"
   }
