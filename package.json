@@ -3,15 +3,25 @@
   "private": true,
   "workspaces": [
     "services/*",
-    "packages/*",
-    "frontend"
+    "packages/*"
   ],
   "scripts": {
     "docker:up": "docker compose up",
     "docker:down": "docker compose down",
-    "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f"
+    "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p packages/money/tsconfig.json && tsc --noEmit -p services/wallets/tsconfig.json && tsc --noEmit -p services/games/tsconfig.json",
+    "test:unit": "bun test packages/money/tests/unit services/wallets/tests/unit",
+    "prepare": "lefthook install || true"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "@crash/eslint": "workspace:*",
+    "bun-types": "latest",
+    "eslint": "^9.17.0",
+    "lefthook": "^1.10.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.8.3"
   }
 }

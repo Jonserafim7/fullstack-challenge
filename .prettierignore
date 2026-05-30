@@ -1,0 +1,14 @@
+node_modules
+**/dist
+bun.lock
+*.txt
+
+# Generated infra config we don't hand-format
+docker/keycloak/realm-export.json
+
+# Authored prose — leave wrapping as-is
+README.md
+AGENTS.md
+CLAUDE.md
+CONTEXT.md
+docs/
