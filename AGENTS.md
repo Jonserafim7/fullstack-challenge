@@ -1,0 +1,116 @@
+# AGENTS.md
+
+This file provides guidance to coding agents (Claude Code, Codex, etc.) when working in this repository. It is the canonical agent guide; `CLAUDE.md` points here.
+
+## What this is
+
+A take-home challenge to build a real-time multiplayer **Crash Game** (casino-style: a multiplier rises from `1.00x` and "crashes" at a pre-determined point; players bet before the round and must cash out before the crash). Read `README.md` for the full spec, game rules, evaluation criteria, and bonus features — it is the source of truth for requirements.
+
+This repo is a **fork** of `junglegaming/fullstack-challenge`. Remotes: `origin` → your fork (the public deliverable), `upstream` → the original challenge repo. Push work to `origin`; pull upstream only if the challenge is updated.
+
+**Current state:** The repo is a scaffold. Both backend services boot a NestJS app exposing only `GET /health`. The `domain/`, `application/`, and `infrastructure/` folders are empty (`.gitkeep` only). `frontend/` and `packages/` are empty and must be built from scratch. The actual game engine, wallet logic, messaging, provably-fair algorithm, WebSocket layer, and frontend are all yet to be implemented.
+
+## Commands
+
+Bun monorepo (workspaces: `services/*`, `packages/*`, `frontend`). Run from the repo root unless noted.
+
+```bash
+bun install            # install all workspace deps
+bun run docker:up      # bring up everything (infra + services); HARD REQUIREMENT: must work with zero manual steps
+bun run docker:down    # stop containers
+bun run docker:prune   # remove containers, volumes, images
+```
+
+Per-service (run from `services/games` or `services/wallets`):
+
+```bash
+bun run dev            # hot-reload via bun --watch src/main.ts
+bun run start          # run once
+bun test tests/unit    # unit tests (also: bun run test)
+bun test tests/e2e     # e2e tests — requires docker:up (also: bun run test:e2e)
+bun test path/to/file.test.ts   # run a single test file
+bun test -t "name"     # run tests matching a name
+```
+
+Tests use the **Bun test runner** (not Jest/Vitest).
+
+## Architecture
+
+Two independent NestJS services behind a Kong API gateway, communicating **asynchronously via RabbitMQ** (never synchronously). The async event design between services is a central evaluation point — model events, flows, and compensation/saga strategies explicitly.
+
+```
+Frontend ──HTTP/REST + WebSocket──> Kong (:8000) ──> games (:4001) / wallets (:4002)
+                                                       │              │
+                                              PostgreSQL (games, wallets DBs) + RabbitMQ
+```
+
+- **games service** — round lifecycle, bets, crash logic, provably-fair, WebSocket push. WebSocket is **server→client only**; all player actions (bet, cashout) go through REST.
+- **wallets service** — player balance, credit/debit. Credit/debit are **not** REST endpoints; they happen via the message broker.
+
+### Service internals (DDD layering)
+
+Each service follows strict DDD layer separation; preserve it when adding code:
+
+```
+src/
+  domain/          # entities, aggregates, value objects, invariants — no framework deps
+  application/     # use cases, orchestration
+  infrastructure/  # ORM, broker, external adapters
+  presentation/    # NestJS controllers + DTOs
+  main.ts          # bootstrap; binds to 0.0.0.0, PORT from env
+  app.module.ts    # root module
+```
+
+### Kong path stripping (important)
+
+Kong routes `/games/*` and `/wallets/*` with `strip_path: true` (`docker/kong/kong.yml`). The prefix is removed before reaching the service, so controllers define routes **without** the `/games` or `/wallets` prefix. Example: `GET /games/health` via Kong maps to `@Get("health")` in the controller. The README's API table lists the public (Kong) paths; subtract the prefix when writing controllers.
+
+## Non-negotiable constraints
+
+These come from the README's elimination/disqualification criteria — violating them fails the challenge:
+
+- **Never use floating point for money.** Use integer cents (`BIGINT`), `NUMERIC`, or a Decimal library. Balance must never go negative.
+- **`bun run docker:up` must bring up the entire stack with no manual steps** — Keycloak realm import, Kong config, and DB migrations all automatic.
+- Services must stay separate and communicate via RabbitMQ/SQS, not direct calls.
+- Backend must validate JWTs from the IdP. **Auth is pre-configured, not something to build** — Keycloak realm `crash-game` auto-imports on startup; test user `player` / `player123`; client `crash-game-client` (public, PKCE S256).
+- Tests must exist (domain unit tests + API e2e).
+- TypeScript strict patterns are expected (`noImplicitAny`, `strictNullChecks` are already on in `tsconfig.json`).
+
+## Infrastructure reference
+
+| Service    | Port(s)              | Notes                                                              |
+| ---------- | -------------------- | ----------------------------------------------------------------- |
+| Kong       | 8000 proxy, 8001 admin | DB-less/declarative, config at `docker/kong/kong.yml`           |
+| PostgreSQL | 5432                 | `admin`/`admin`; databases `games` + `wallets` (init script)      |
+| RabbitMQ   | 5672 AMQP, 15672 UI  | `admin`/`admin`                                                   |
+| Keycloak   | 8080                 | admin `admin`/`admin`; realm at `docker/keycloak/realm-export.json` |
+| games      | 4001                 | env from `services/games/.env`                                    |
+| wallets    | 4002                 | env from `services/wallets/.env`                                  |
+| frontend   | 3000                 | placeholder commented out in `docker-compose.yml` — uncomment after scaffolding |
+
+Infra credentials are hardcoded in `docker-compose.yml` (local dev only). Each service has `.env.example`; copy to `.env` to run outside Docker (the `.env` files are git-ignored but required by `docker-compose.yml`'s `env_file`).
+
+The infra is fully swappable (SQS instead of RabbitMQ, another gateway/IdP, etc.) as long as `docker:up` still brings up everything in one command.
+
+## Frontend (to be built)
+
+Not scaffolded. Choose Vite+React, Next.js, or TanStack Start (the stated house preference). Requirements: Tailwind CSS v4 + shadcn/ui, TanStack Query for server state + Zustand/Context for client state, dark casino aesthetic, real-time multiplier animation, OIDC login redirect to Keycloak. After scaffolding, add a `Dockerfile` and uncomment the `frontend` block in `docker-compose.yml`.
+
+## Conventions
+
+- **Commits:** conventional commits (`type(scope): description`). The challenge grades git history (atomic commits, clear messages, logical progression) — 10% of the score.
+- Shared code between services goes in `packages/` as `@crash/*` workspace packages.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked as GitHub issues on the `origin` fork, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical triage roles map 1:1 to default label names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
