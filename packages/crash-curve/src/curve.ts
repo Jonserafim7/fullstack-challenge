@@ -2,7 +2,7 @@
 // service (to time each Crash) and the frontend canvas (to animate the rise). Because both
 // sides compute it locally, the growth rate must have a single source of truth — this
 // constant — so the two can never drift (ADR-0003).
-export const GROWTH_RATE_PER_SECOND = 0.06;
+export const GROWTH_RATE_PER_SECOND = 0.17;
 
 // m(t) = e^(rate * t), with t in seconds. m(0) = 1.00 and the curve is strictly increasing.
 export function multiplierAt({ elapsedMs }: { elapsedMs: number }): number {
