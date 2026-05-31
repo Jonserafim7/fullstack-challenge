@@ -1,11 +1,16 @@
 import { Money } from "@crash/money";
 import { Wallet } from "../../domain/wallet";
 import type { WalletRepository } from "../../domain/wallet.repository";
+import { EnvService } from "../env/env.service";
 
-const DEFAULT_STARTING_BALANCE_CENTS = 100_000n;
-
-export async function seedTestWallet(wallets: WalletRepository): Promise<void> {
-  const playerId = process.env.TEST_PLAYER_ID;
+export async function seedTestWallet({
+  wallets,
+  env,
+}: {
+  wallets: WalletRepository;
+  env: EnvService;
+}): Promise<void> {
+  const playerId = env.get("TEST_PLAYER_ID");
   if (!playerId) {
     return;
   }
@@ -16,9 +21,7 @@ export async function seedTestWallet(wallets: WalletRepository): Promise<void> {
   }
 
   const startingBalance = Money.fromCents(
-    process.env.WALLET_STARTING_BALANCE_CENTS !== undefined
-      ? BigInt(process.env.WALLET_STARTING_BALANCE_CENTS)
-      : DEFAULT_STARTING_BALANCE_CENTS,
+    env.get("WALLET_STARTING_BALANCE_CENTS"),
   );
   await wallets.save(
     Wallet.create({ playerId, initialBalance: startingBalance }),

@@ -6,13 +6,18 @@ import {
   WALLET_REPOSITORY,
   type WalletRepository,
 } from "./domain/wallet.repository";
+import { EnvService } from "./infrastructure/env/env.service";
 import { seedTestWallet } from "./infrastructure/seed/seed-test-wallet";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
 
-  await seedTestWallet(app.get<WalletRepository>(WALLET_REPOSITORY));
+  const env = app.get(EnvService);
+  await seedTestWallet({
+    wallets: app.get<WalletRepository>(WALLET_REPOSITORY),
+    env,
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("Wallets API")
@@ -24,7 +29,7 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("docs", app, document);
 
-  const port = process.env.PORT ?? "4002";
+  const port = env.get("PORT");
   await app.listen(port, "0.0.0.0");
   console.log(`Wallets service running on port ${port}`);
 }

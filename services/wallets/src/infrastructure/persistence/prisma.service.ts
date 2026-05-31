@@ -1,23 +1,16 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../../generated/prisma/client";
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+import { EnvService } from "../env/env.service";
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor() {
+  constructor(env: EnvService) {
     super({
-      adapter: new PrismaPg({ connectionString: requireEnv("DATABASE_URL") }),
+      adapter: new PrismaPg({ connectionString: env.get("DATABASE_URL") }),
     });
   }
 
