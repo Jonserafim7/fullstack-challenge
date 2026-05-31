@@ -1,15 +1,10 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { WalletRepository } from "./application/repositories/wallet.repository";
-import { PrismaService } from "./infrastructure/persistence/prisma.service";
-import { PrismaWalletRepository } from "./infrastructure/persistence/prisma-wallet.repository";
-import { JwtAuthGuard } from "./infrastructure/auth/jwt-auth.guard";
+import { AuthModule } from "./infrastructure/auth/auth.module";
+import { DatabaseModule } from "./infrastructure/persistence/database.module";
 import { envSchema } from "./infrastructure/env/env";
 import { EnvModule } from "./infrastructure/env/env.module";
-import { CreateWalletUseCase } from "./application/use-cases/create-wallet.use-case";
-import { GetMyWalletUseCase } from "./application/use-cases/get-my-wallet.use-case";
-import { HealthController } from "./presentation/controllers/health.controller";
-import { WalletsController } from "./presentation/controllers/wallets.controller";
+import { HttpModule } from "./presentation/http.module";
 
 @Module({
   imports: [
@@ -18,14 +13,9 @@ import { WalletsController } from "./presentation/controllers/wallets.controller
       isGlobal: true,
     }),
     EnvModule,
-  ],
-  controllers: [HealthController, WalletsController],
-  providers: [
-    PrismaService,
-    JwtAuthGuard,
-    CreateWalletUseCase,
-    GetMyWalletUseCase,
-    { provide: WalletRepository, useClass: PrismaWalletRepository },
+    DatabaseModule,
+    AuthModule,
+    HttpModule,
   ],
 })
 export class AppModule {}
