@@ -8,7 +8,12 @@ import eslintConfigPrettier from "eslint-config-prettier";
 // eslint-config-prettier (kept last) disables any rules that would conflict.
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/*.mjs"],
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/*.mjs",
+      "**/generated/**",
+    ],
   },
   {
     files: ["**/*.ts"],

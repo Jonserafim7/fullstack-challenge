@@ -2,6 +2,7 @@ node_modules
 **/dist
 bun.lock
 *.txt
+**/generated/
 
 # Generated infra config we don't hand-format
 docker/keycloak/realm-export.json

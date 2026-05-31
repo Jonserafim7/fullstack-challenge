@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0007](./0007-persistence-with-prisma.md) (2026-05-31). Kept as historical record. The repository pattern and the ORM-free domain below still hold — only the ORM itself changed (MikroORM → Prisma). The "swapping ORMs later touches only infrastructure" consequence is exactly what made that change cheap.
 
 ## Context
 
