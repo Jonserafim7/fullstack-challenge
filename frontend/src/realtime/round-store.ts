@@ -35,6 +35,26 @@ export interface CrashedEvent {
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
+const phaseRank: Record<RoundPhase, number> = {
+  [RoundPhase.BETTING]: 0,
+  [RoundPhase.RUNNING]: 1,
+  [RoundPhase.CRASHED]: 2,
+  [RoundPhase.SETTLED]: 3,
+};
+
+// A monotonic key over (roundNumber, phase). Rounds and phases only ever move forward, so a
+// stale REST snapshot — one that resolves after a newer WebSocket delta already landed — can
+// be detected and ignored instead of regressing the store.
+function progressKey(
+  roundNumber: number | null,
+  phase: RoundPhase | null,
+): number {
+  if (roundNumber === null || phase === null) {
+    return -1;
+  }
+  return roundNumber * 4 + phaseRank[phase];
+}
+
 interface RoundState {
   connection: ConnectionStatus;
   roundNumber: number | null;
@@ -69,18 +89,29 @@ export const useRoundStore = create<RoundState>((set) => ({
   setConnection: (connection) => set({ connection }),
 
   hydrate: (snapshot) =>
-    set(
-      snapshot
-        ? {
-            roundNumber: snapshot.roundNumber,
-            phase: snapshot.phase,
-            bettingEndsAt: snapshot.bettingEndsAt,
-            startedAt: snapshot.startedAt,
-            crashedAt: snapshot.crashedAt,
-            crashPoint: snapshot.crashPoint,
-          }
-        : {},
-    ),
+    set((state) => {
+      if (!snapshot) {
+        return {};
+      }
+      const isStale =
+        progressKey(snapshot.roundNumber, snapshot.phase) <
+        progressKey(state.roundNumber, state.phase);
+      if (isStale) {
+        return {};
+      }
+      // seedHash and verification only arrive on the round's own WebSocket events; clear them
+      // when hydrating a different round so a late joiner never shows the prior round's values.
+      const isNewRound = snapshot.roundNumber !== state.roundNumber;
+      return {
+        roundNumber: snapshot.roundNumber,
+        phase: snapshot.phase,
+        bettingEndsAt: snapshot.bettingEndsAt,
+        startedAt: snapshot.startedAt,
+        crashedAt: snapshot.crashedAt,
+        crashPoint: snapshot.crashPoint,
+        ...(isNewRound ? { seedHash: null, verification: null } : {}),
+      };
+    }),
 
   applyBettingOpened: (event) =>
     set({

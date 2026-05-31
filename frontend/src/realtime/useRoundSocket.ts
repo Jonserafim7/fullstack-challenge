@@ -26,8 +26,12 @@ export function useRoundSocket(): void {
     } = useRoundStore.getState();
 
     async function hydrateFromSnapshot(): Promise<void> {
-      const snapshot = await fetchCurrentRound();
-      if (active) hydrate(snapshot);
+      try {
+        const snapshot = await fetchCurrentRound();
+        if (active) hydrate(snapshot);
+      } catch {
+        // Snapshot hydration is best-effort; the WebSocket deltas will populate state.
+      }
     }
 
     void hydrateFromSnapshot();
