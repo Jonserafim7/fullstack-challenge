@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Money } from "@crash/money";
-import { Wallet } from "../domain/wallet";
-import { WalletRepository } from "./repositories/wallet.repository";
+import { Wallet } from "../../domain/entities/wallet";
+import { WalletRepository } from "../repositories/wallet.repository";
 
 export interface CreateWalletResult {
   wallet: Wallet;

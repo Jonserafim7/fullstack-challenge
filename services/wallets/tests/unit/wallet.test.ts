@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { Money } from "@crash/money";
-import { Wallet } from "../../src/domain/wallet";
-import { InsufficientBalanceError } from "../../src/domain/insufficient-balance.error";
+import { Wallet } from "../../src/domain/entities/wallet";
+import { InsufficientBalanceError } from "../../src/domain/errors/insufficient-balance.error";
 
 describe("Wallet", () => {
   test("is created for a player with an initial balance", () => {

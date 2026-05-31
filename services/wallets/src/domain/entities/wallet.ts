@@ -1,5 +1,5 @@
 import { Money } from "@crash/money";
-import { InsufficientBalanceError } from "./insufficient-balance.error";
+import { InsufficientBalanceError } from "../errors/insufficient-balance.error";
 
 export class Wallet {
   private constructor(

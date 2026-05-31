@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Money } from "@crash/money";
 import { WalletRepository } from "../../application/repositories/wallet.repository";
-import { Wallet } from "../../domain/wallet";
+import { Wallet } from "../../domain/entities/wallet";
 import { PrismaService } from "./prisma.service";
 
 interface WalletRow {

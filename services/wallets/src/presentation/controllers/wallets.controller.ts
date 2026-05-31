@@ -16,9 +16,9 @@ import {
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import type { Response } from "express";
-import { CreateWalletUseCase } from "../../application/create-wallet.use-case";
-import { GetMyWalletUseCase } from "../../application/get-my-wallet.use-case";
-import { WalletNotFoundError } from "../../application/wallet-not-found.error";
+import { CreateWalletUseCase } from "../../application/use-cases/create-wallet.use-case";
+import { GetMyWalletUseCase } from "../../application/use-cases/get-my-wallet.use-case";
+import { WalletNotFoundError } from "../../application/errors/wallet-not-found.error";
 import { JwtAuthGuard } from "../../infrastructure/auth/jwt-auth.guard";
 import { CurrentPlayer } from "../../infrastructure/auth/current-player.decorator";
 import {

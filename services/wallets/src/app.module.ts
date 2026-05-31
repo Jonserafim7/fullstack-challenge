@@ -6,8 +6,8 @@ import { PrismaWalletRepository } from "./infrastructure/persistence/prisma-wall
 import { JwtAuthGuard } from "./infrastructure/auth/jwt-auth.guard";
 import { envSchema } from "./infrastructure/env/env";
 import { EnvModule } from "./infrastructure/env/env.module";
-import { CreateWalletUseCase } from "./application/create-wallet.use-case";
-import { GetMyWalletUseCase } from "./application/get-my-wallet.use-case";
+import { CreateWalletUseCase } from "./application/use-cases/create-wallet.use-case";
+import { GetMyWalletUseCase } from "./application/use-cases/get-my-wallet.use-case";
 import { HealthController } from "./presentation/controllers/health.controller";
 import { WalletsController } from "./presentation/controllers/wallets.controller";
 

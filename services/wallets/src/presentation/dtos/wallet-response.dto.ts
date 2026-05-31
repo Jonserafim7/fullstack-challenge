@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Wallet } from "../../domain/wallet";
+import { Wallet } from "../../domain/entities/wallet";
 
 export class WalletResponseDto {
   @ApiProperty({

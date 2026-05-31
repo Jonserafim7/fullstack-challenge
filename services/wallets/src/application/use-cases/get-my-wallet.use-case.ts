@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { Wallet } from "../domain/wallet";
-import { WalletRepository } from "./repositories/wallet.repository";
-import { WalletNotFoundError } from "./wallet-not-found.error";
+import { Wallet } from "../../domain/entities/wallet";
+import { WalletRepository } from "../repositories/wallet.repository";
+import { WalletNotFoundError } from "../errors/wallet-not-found.error";
 
 @Injectable()
 export class GetMyWalletUseCase {

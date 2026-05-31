@@ -1,6 +1,6 @@
 import { Money } from "@crash/money";
 import { WalletRepository } from "../../application/repositories/wallet.repository";
-import { Wallet } from "../../domain/wallet";
+import { Wallet } from "../../domain/entities/wallet";
 import { EnvService } from "../env/env.service";
 
 export async function seedTestWallet({
