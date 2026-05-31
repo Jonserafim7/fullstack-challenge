@@ -15,6 +15,7 @@ function buildGateway(jwt: JwtVerifier): {
   const gateway = new RoundGateway(jwt);
   gateway.afterInit({
     emit: (event: string, payload: unknown) => emitted.push({ event, payload }),
+    use: () => {},
   } as never);
   return { gateway, emitted };
 }
@@ -23,10 +24,6 @@ function fakeSocket(token?: string) {
   return {
     handshake: { auth: token === undefined ? {} : { token } },
     data: {} as Record<string, unknown>,
-    disconnected: false,
-    disconnect(): void {
-      this.disconnected = true;
-    },
   };
 }
 
@@ -81,34 +78,29 @@ describe("RoundGateway broadcasts", () => {
   });
 });
 
-describe("RoundGateway JWT on connect", () => {
-  test("disconnects a socket with no token", async () => {
+describe("RoundGateway JWT authentication", () => {
+  test("rejects a socket with no token", async () => {
     const { gateway } = buildGateway(acceptingJwt);
     const socket = fakeSocket();
 
-    await gateway.handleConnection(socket as never);
-
-    expect(socket.disconnected).toBe(true);
+    await expect(gateway.authenticate(socket as never)).rejects.toThrow();
     expect(socket.data.playerId).toBeUndefined();
   });
 
-  test("disconnects a socket with an invalid token", async () => {
+  test("rejects a socket with an invalid token", async () => {
     const { gateway } = buildGateway(rejectingJwt);
     const socket = fakeSocket("bad-token");
 
-    await gateway.handleConnection(socket as never);
-
-    expect(socket.disconnected).toBe(true);
+    await expect(gateway.authenticate(socket as never)).rejects.toThrow();
     expect(socket.data.playerId).toBeUndefined();
   });
 
-  test("keeps a socket with a valid token and records the player id", async () => {
+  test("accepts a valid token and records the player id", async () => {
     const { gateway } = buildGateway(acceptingJwt);
     const socket = fakeSocket("good-token");
 
-    await gateway.handleConnection(socket as never);
+    await gateway.authenticate(socket as never);
 
-    expect(socket.disconnected).toBe(false);
     expect(socket.data.playerId).toBe("player-sub");
   });
 });

@@ -1,9 +1,5 @@
 import { Logger } from "@nestjs/common";
-import {
-  OnGatewayConnection,
-  OnGatewayInit,
-  WebSocketGateway,
-} from "@nestjs/websockets";
+import { OnGatewayInit, WebSocketGateway } from "@nestjs/websockets";
 import type { Server, Socket } from "socket.io";
 import {
   RoundEvent,
@@ -15,15 +11,13 @@ import {
 import { JwtVerifier } from "../auth/jwt-verifier";
 
 // Server -> client only (ADR-0003): broadcasts Round phase transitions to every connected
-// client. The JWT is validated on connect before the socket is allowed to stay; watching is
+// client. The JWT is validated in connection middleware, so an unauthenticated socket is
+// rejected before it joins the broadcast set — no event can race the rejection. Watching is
 // public, so there are no per-player channels yet (owner-only delivery arrives with betting in
 // #6/#7). The websocket-only transport lets the upgrade pass cleanly through Kong without the
 // polling handshake.
 @WebSocketGateway({ transports: ["websocket"] })
-export class RoundGateway
-  extends RoundEventPublisher
-  implements OnGatewayInit, OnGatewayConnection
-{
+export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
   private readonly logger = new Logger(RoundGateway.name);
   private server?: Server;
 
@@ -33,19 +27,19 @@ export class RoundGateway
 
   afterInit(server: Server): void {
     this.server = server;
+    server.use((socket, next) => {
+      void this.authenticate(socket)
+        .then(() => next())
+        .catch(() => next(new Error("Unauthorized")));
+    });
   }
 
-  async handleConnection(client: Socket): Promise<void> {
-    const token = readHandshakeToken(client);
+  async authenticate(socket: Socket): Promise<void> {
+    const token = readHandshakeToken(socket);
     if (!token) {
-      client.disconnect();
-      return;
+      throw new Error("Missing token");
     }
-    try {
-      client.data.playerId = await this.jwt.verify(token);
-    } catch {
-      client.disconnect();
-    }
+    socket.data.playerId = await this.jwt.verify(token);
   }
 
   bettingOpened(event: BettingOpenedEvent): void {
