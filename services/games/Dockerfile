@@ -8,10 +8,13 @@ COPY package.json bun.lock tsconfig.base.json ./
 COPY packages ./packages
 COPY services/games ./services/games
 
+# `bun install` runs the games postinstall, which generates the Prisma client
+# into ./generated/prisma (engine-free query compiler).
 RUN bun install
 
 WORKDIR /app/services/games
 
 EXPOSE 4001
 
-CMD ["bun", "run", "src/main.ts"]
+# Apply pending migrations, then boot. Keeps `docker:up` a single zero-step command.
+CMD ["sh", "-c", "bun run db:deploy && bun run src/main.ts"]

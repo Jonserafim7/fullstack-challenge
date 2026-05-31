@@ -107,6 +107,12 @@ services:
       PORT: 4001
       DATABASE_URL: postgresql://admin:admin@postgres:5432/games
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+      HOUSE_EDGE: "0.01"
+      CLIENT_SEED: crash-game
+      SERVER_TERMINAL_SEED: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      SERVER_CHAIN_LENGTH: "100000"
+      BETTING_DURATION_MS: "5000"
+      CRASHED_DISPLAY_MS: "3000"
     depends_on:
       postgres:
         condition: service_healthy
