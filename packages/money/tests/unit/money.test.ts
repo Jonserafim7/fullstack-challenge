@@ -5,7 +5,13 @@ describe("Money", () => {
   test("is created from integer cents and exposes them", () => {
     const amount = Money.fromCents(1000);
 
-    expect(amount.cents).toBe(1000);
+    expect(amount.cents).toBe(1000n);
+  });
+
+  test("preserves amounts beyond Number.MAX_SAFE_INTEGER", () => {
+    const beyondSafeInteger = 9_007_199_254_740_993n;
+
+    expect(Money.fromCents(beyondSafeInteger).cents).toBe(beyondSafeInteger);
   });
 
   test("rejects a negative amount", () => {
@@ -22,9 +28,9 @@ describe("Money", () => {
 
     const total = balance.plus(credit);
 
-    expect(total.cents).toBe(1250);
-    expect(balance.cents).toBe(1000);
-    expect(credit.cents).toBe(250);
+    expect(total.cents).toBe(1250n);
+    expect(balance.cents).toBe(1000n);
+    expect(credit.cents).toBe(250n);
   });
 
   test("subtracts another amount", () => {
@@ -32,7 +38,7 @@ describe("Money", () => {
 
     const remaining = balance.minus(Money.fromCents(250));
 
-    expect(remaining.cents).toBe(750);
+    expect(remaining.cents).toBe(750n);
   });
 
   test("throws when subtraction would go negative", () => {
@@ -46,7 +52,7 @@ describe("Money", () => {
 
     const payout = stake.times(247);
 
-    expect(payout.cents).toBe(1235);
+    expect(payout.cents).toBe(1235n);
   });
 
   test("floors sub-cent remainders on multiplication", () => {
@@ -54,7 +60,7 @@ describe("Money", () => {
 
     const payout = stake.times(150);
 
-    expect(payout.cents).toBe(499);
+    expect(payout.cents).toBe(499n);
   });
 
   test("compares amounts with isLessThan", () => {
@@ -66,6 +72,6 @@ describe("Money", () => {
   });
 
   test("exposes a zero amount", () => {
-    expect(Money.zero().cents).toBe(0);
+    expect(Money.zero().cents).toBe(0n);
   });
 });

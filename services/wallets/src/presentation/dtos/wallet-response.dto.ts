@@ -18,6 +18,6 @@ export class WalletResponseDto {
 export function toWalletResponse(wallet: Wallet): WalletResponseDto {
   return {
     playerId: wallet.playerId,
-    balance: wallet.balance.cents,
+    balance: Number(wallet.balance.cents),
   };
 }

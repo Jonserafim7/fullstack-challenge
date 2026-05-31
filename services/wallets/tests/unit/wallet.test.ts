@@ -11,7 +11,7 @@ describe("Wallet", () => {
     });
 
     expect(wallet.playerId).toBe("player-1");
-    expect(wallet.balance.cents).toBe(10000);
+    expect(wallet.balance.cents).toBe(10000n);
   });
 
   test("credit increases the balance", () => {
@@ -22,7 +22,7 @@ describe("Wallet", () => {
 
     wallet.credit(Money.fromCents(2500));
 
-    expect(wallet.balance.cents).toBe(12500);
+    expect(wallet.balance.cents).toBe(12500n);
   });
 
   test("debit decreases the balance", () => {
@@ -33,7 +33,7 @@ describe("Wallet", () => {
 
     wallet.debit(Money.fromCents(3000));
 
-    expect(wallet.balance.cents).toBe(7000);
+    expect(wallet.balance.cents).toBe(7000n);
   });
 
   test("debit of the entire balance leaves it at zero", () => {
@@ -44,7 +44,7 @@ describe("Wallet", () => {
 
     wallet.debit(Money.fromCents(5000));
 
-    expect(wallet.balance.cents).toBe(0);
+    expect(wallet.balance.cents).toBe(0n);
   });
 
   test("rejects a debit larger than the balance, leaving it unchanged", () => {
@@ -56,6 +56,6 @@ describe("Wallet", () => {
     expect(() => wallet.debit(Money.fromCents(5001))).toThrow(
       InsufficientBalanceError,
     );
-    expect(wallet.balance.cents).toBe(5000);
+    expect(wallet.balance.cents).toBe(5000n);
   });
 });

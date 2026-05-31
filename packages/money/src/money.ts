@@ -1,23 +1,20 @@
 export class Money {
-  private constructor(private readonly amountInCents: number) {}
+  private constructor(private readonly amountInCents: bigint) {}
 
   static zero(): Money {
-    return new Money(0);
+    return new Money(0n);
   }
 
-  static fromCents(cents: number): Money {
-    if (!Number.isInteger(cents)) {
-      throw new RangeError(
-        `Money must be an integer number of cents: ${cents}`,
-      );
+  static fromCents(cents: bigint | number): Money {
+    const value =
+      typeof cents === "bigint" ? cents : integerCentsToBigInt(cents);
+    if (value < 0n) {
+      throw new RangeError(`Money cannot be negative: ${value}`);
     }
-    if (cents < 0) {
-      throw new RangeError(`Money cannot be negative: ${cents}`);
-    }
-    return new Money(cents);
+    return new Money(value);
   }
 
-  get cents(): number {
+  get cents(): bigint {
     return this.amountInCents;
   }
 
@@ -31,11 +28,18 @@ export class Money {
 
   times(multiplierHundredths: number): Money {
     return Money.fromCents(
-      Math.floor((this.amountInCents * multiplierHundredths) / 100),
+      (this.amountInCents * BigInt(multiplierHundredths)) / 100n,
     );
   }
 
   isLessThan(other: Money): boolean {
     return this.amountInCents < other.amountInCents;
   }
+}
+
+function integerCentsToBigInt(cents: number): bigint {
+  if (!Number.isInteger(cents)) {
+    throw new RangeError(`Money must be an integer number of cents: ${cents}`);
+  }
+  return BigInt(cents);
 }
