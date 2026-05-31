@@ -12,6 +12,7 @@ import {
   type HashChain,
 } from "../domain/provably-fair";
 import { EnvService } from "../infrastructure/env/env.service";
+import { RoundEventPublisher } from "./realtime/round-event-publisher";
 import { RoundRepository } from "./repositories/round.repository";
 
 const ONE_X_HUNDREDTHS = 100;
@@ -32,6 +33,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     private readonly rounds: RoundRepository,
     private readonly env: EnvService,
+    private readonly publisher: RoundEventPublisher,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -99,12 +101,21 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     });
 
     await this.rounds.save(round);
+    this.publisher.bettingOpened({
+      roundNumber: round.roundNumber,
+      seedHash: this.seedHashFor(round.roundNumber),
+      bettingEndsAt: round.bettingEndsAt!.toISOString(),
+    });
     this.scheduleAfter(bettingDurationMs, () => this.startRunning(round));
   }
 
   private async startRunning(round: Round): Promise<void> {
     round.startRunning({ startedAt: new Date() });
     await this.rounds.save(round);
+    this.publisher.running({
+      roundNumber: round.roundNumber,
+      startedAt: round.startedAt!.toISOString(),
+    });
     const runningMs = elapsedMsToReach({
       multiplier: round.crashPointHundredths / ONE_X_HUNDREDTHS,
     });
@@ -114,9 +125,28 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   private async crash(round: Round): Promise<void> {
     round.crash({ crashedAt: new Date() });
     await this.rounds.save(round);
+    this.publisher.crashed({
+      roundNumber: round.roundNumber,
+      crashPoint: round.crashPointHundredths,
+      crashedAt: round.crashedAt!.toISOString(),
+      verification: {
+        serverSeed: round.serverSeed,
+        previousSeed: this.seedHashFor(round.roundNumber),
+        clientSeed: round.clientSeed,
+        houseEdge: round.houseEdge,
+      },
+    });
     this.scheduleAfter(this.env.get("CRASHED_DISPLAY_MS"), () =>
       this.settleAndContinue(round),
     );
+  }
+
+  // The commitment a client checks a revealed Server Seed against: the previous Round's seed,
+  // or the genesis Commitment for Round 1 (seedForRound rejects round 0).
+  private seedHashFor(roundNumber: number): string {
+    return roundNumber === 1
+      ? this.chain.commitment
+      : this.chain.seedForRound(roundNumber - 1);
   }
 
   private async settleAndContinue(round: Round): Promise<void> {

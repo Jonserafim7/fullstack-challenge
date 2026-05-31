@@ -107,6 +107,8 @@ services:
       PORT: 4001
       DATABASE_URL: postgresql://admin:admin@postgres:5432/games
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/crash-game
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
       HOUSE_EDGE: "0.01"
       CLIENT_SEED: crash-game
       SERVER_TERMINAL_SEED: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -117,6 +119,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4001/health || exit 1"]
