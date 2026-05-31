@@ -1,5 +1,7 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { auth } from "@/auth/auth";
+import { useBalanceQuery } from "@/queries/balance";
+import { formatCents } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async ({ context }) => {
@@ -21,6 +24,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const router = useRouter();
+  const { data, isPending, isError } = useBalanceQuery();
 
   async function handleLogout() {
     await auth.logout();
@@ -36,7 +40,21 @@ function Home() {
             Bem-vindo, {auth.username ?? "jogador"}.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Saldo</p>
+            {isPending ? (
+              <Skeleton className="h-9 w-36" />
+            ) : isError ? (
+              <p className="text-sm text-destructive">
+                Não foi possível carregar o saldo.
+              </p>
+            ) : (
+              <p className="text-3xl font-semibold tabular-nums">
+                {formatCents(data.balance)}
+              </p>
+            )}
+          </div>
           <Button variant="outline" className="w-full" onClick={handleLogout}>
             Sair
           </Button>
