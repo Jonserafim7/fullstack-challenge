@@ -1,10 +1,7 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { Money } from "@crash/money";
 import { Wallet } from "../domain/wallet";
-import {
-  WALLET_REPOSITORY,
-  type WalletRepository,
-} from "../domain/wallet.repository";
+import { WalletRepository } from "./repositories/wallet.repository";
 
 export interface CreateWalletResult {
   wallet: Wallet;
@@ -13,10 +10,7 @@ export interface CreateWalletResult {
 
 @Injectable()
 export class CreateWalletUseCase {
-  constructor(
-    @Inject(WALLET_REPOSITORY)
-    private readonly wallets: WalletRepository,
-  ) {}
+  constructor(private readonly wallets: WalletRepository) {}
 
   async execute({
     playerId,

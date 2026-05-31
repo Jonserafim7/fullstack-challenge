@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { WALLET_REPOSITORY } from "./domain/wallet.repository";
+import { WalletRepository } from "./application/repositories/wallet.repository";
 import { PrismaService } from "./infrastructure/persistence/prisma.service";
 import { PrismaWalletRepository } from "./infrastructure/persistence/prisma-wallet.repository";
 import { JwtAuthGuard } from "./infrastructure/auth/jwt-auth.guard";
@@ -25,7 +25,7 @@ import { WalletsController } from "./presentation/controllers/wallets.controller
     JwtAuthGuard,
     CreateWalletUseCase,
     GetMyWalletUseCase,
-    { provide: WALLET_REPOSITORY, useClass: PrismaWalletRepository },
+    { provide: WalletRepository, useClass: PrismaWalletRepository },
   ],
 })
 export class AppModule {}
