@@ -1,13 +1,18 @@
 /// <reference types="vite/client" />
 import {
   Outlet,
-  createRootRoute,
-  HeadContent,
   Scripts,
+  HeadContent,
+  createRootRouteWithContext,
 } from "@tanstack/react-router";
+import type { Auth } from "../auth/auth";
 import appCss from "../styles/app.css?url";
 
-export const Route = createRootRoute({
+export interface RouterContext {
+  auth: Auth;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -16,7 +21,11 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
-  component: () => (
+  component: RootDocument,
+});
+
+function RootDocument() {
+  return (
     <html lang="en" className="dark">
       <head>
         <HeadContent />
@@ -26,5 +35,5 @@ export const Route = createRootRoute({
         <Scripts />
       </body>
     </html>
-  ),
-});
+  );
+}
