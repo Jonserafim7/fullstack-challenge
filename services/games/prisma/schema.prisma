@@ -1,0 +1,33 @@
+// Games persistence schema.
+//
+// Engine-free setup: the service runs on `oven/bun:1-alpine` (musl) under Bun,
+// where Prisma's native Rust query engine is fragile. Prisma 7's query compiler
+// removes the native binary and the pg driver adapter (configured on the
+// PrismaClient at runtime) handles the connection through node-postgres.
+// The connection URL lives in prisma.config.ts, not here. See ADR-0007.
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Round {
+  roundNumber   Int       @id @map("round_number")
+  phase         String
+  crashPoint    Int       @map("crash_point")
+  serverSeed    String    @map("server_seed")
+  clientSeed    String    @map("client_seed")
+  houseEdge     Float     @map("house_edge")
+  bettingEndsAt DateTime? @map("betting_ends_at")
+  startedAt     DateTime? @map("started_at")
+  crashedAt     DateTime? @map("crashed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([phase, roundNumber])
+  @@map("round")
+}
