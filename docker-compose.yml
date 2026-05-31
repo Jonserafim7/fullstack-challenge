@@ -153,14 +153,18 @@ services:
   # ---------------------------------------------------------------------------
   # Frontend (placeholder — candidate implements)
   # ---------------------------------------------------------------------------
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - kong
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_OIDC_AUTHORITY: http://localhost:8080/realms/crash-game
+        VITE_OIDC_CLIENT_ID: crash-game-client
+        VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - kong
 
 volumes:
   postgres_data:
