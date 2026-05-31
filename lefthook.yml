@@ -2,12 +2,18 @@ pre-commit:
   parallel: true
   commands:
     format:
-      glob: "*.{ts,mjs,json,yml,yaml}"
+      glob: "*.{ts,tsx,mjs,json,yml,yaml,css}"
       run: bunx prettier --check {staged_files}
     lint:
       glob: "*.ts"
+      exclude:
+        - "frontend/**"
       run: bunx eslint {staged_files}
     typecheck:
       run: bun run typecheck
     unit-tests:
       run: bun run test:unit
+    frontend:
+      root: "frontend/"
+      glob: "*.{ts,tsx}"
+      run: bun run check
