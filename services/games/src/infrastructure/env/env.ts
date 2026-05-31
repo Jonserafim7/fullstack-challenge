@@ -4,6 +4,11 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(4001),
 
+  // Auth: validate the token issuer, fetch signing keys from the IdP. The games
+  // WebSocket gateway validates the JWT on connect (ADR-0003).
+  KEYCLOAK_ISSUER: z.string().url(),
+  KEYCLOAK_JWKS_URI: z.string().url(),
+
   // Provably-fair engine (ADR-0002).
   HOUSE_EDGE: z.coerce.number().min(0).max(1).default(0.01),
   CLIENT_SEED: z.string().default("crash-game"),
