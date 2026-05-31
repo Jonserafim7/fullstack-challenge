@@ -1,0 +1,484 @@
+{
+  "info": {
+    "_postman_id": "9b9a8c9d-0df5-4ef3-9bfb-5f4d47ec4382",
+    "name": "Crash Game",
+    "description": "Postman collection for the Crash Game challenge. Run `bun run docker:up`, then call `Auth / Get player access token` before authenticated requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Get player access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"token request succeeded\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"accessToken\", body.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{keycloakClientId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "{{playerUsername}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{playerPassword}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/crash-game/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "crash-game",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Gets a JWT for the default Keycloak test user and stores it in the collection variable `accessToken`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Implemented - Gateway",
+      "item": [
+        {
+          "name": "Games health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/games/health",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "health"
+              ]
+            },
+            "description": "Health check routed through Kong to the games service."
+          },
+          "response": []
+        },
+        {
+          "name": "Wallets health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/wallets/health",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "wallets",
+                "health"
+              ]
+            },
+            "description": "Health check routed through Kong to the wallets service."
+          },
+          "response": []
+        },
+        {
+          "name": "Create my wallet",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/wallets",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "wallets"
+              ]
+            },
+            "description": "Creates the authenticated player's wallet. This is idempotent: 201 when created, 200 when it already exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Get my wallet",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/wallets/me",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "wallets",
+                "me"
+              ]
+            },
+            "description": "Returns the authenticated player's wallet and balance in integer cents."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Implemented - Direct Services",
+      "item": [
+        {
+          "name": "Games health - direct",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gamesServiceUrl}}/health",
+              "host": [
+                "{{gamesServiceUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Direct games service health check, bypassing Kong."
+          },
+          "response": []
+        },
+        {
+          "name": "Wallets health - direct",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{walletsServiceUrl}}/health",
+              "host": [
+                "{{walletsServiceUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Direct wallets service health check, bypassing Kong."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Planned - Game API",
+      "description": "Endpoints listed in README.md but not fully implemented yet. Keep these as contract placeholders while building the game service.",
+      "item": [
+        {
+          "name": "Get current round",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/games/rounds/current",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "rounds",
+                "current"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get round history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/games/rounds/history?page={{page}}&limit={{limit}}",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "rounds",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify round",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/games/rounds/{{roundId}}/verify",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "rounds",
+                "{{roundId}}",
+                "verify"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get my bets",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kongUrl}}/games/bets/me?page={{page}}&limit={{limit}}",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "bets",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Place bet",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountCents\": {{betAmountCents}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{kongUrl}}/games/bet",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "bet"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cash out",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{kongUrl}}/games/bet/cashout",
+              "host": [
+                "{{kongUrl}}"
+              ],
+              "path": [
+                "games",
+                "bet",
+                "cashout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "kongUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "gamesServiceUrl",
+      "value": "http://localhost:4001",
+      "type": "string"
+    },
+    {
+      "key": "walletsServiceUrl",
+      "value": "http://localhost:4002",
+      "type": "string"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "keycloakClientId",
+      "value": "crash-game-client",
+      "type": "string"
+    },
+    {
+      "key": "playerUsername",
+      "value": "player",
+      "type": "string"
+    },
+    {
+      "key": "playerPassword",
+      "value": "player123",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "page",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "limit",
+      "value": "20",
+      "type": "string"
+    },
+    {
+      "key": "roundId",
+      "value": "replace-with-round-id",
+      "type": "string"
+    },
+    {
+      "key": "betAmountCents",
+      "value": "1000",
+      "type": "string"
+    }
+  ]
+}
