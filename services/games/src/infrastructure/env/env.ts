@@ -4,6 +4,12 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(4001),
 
+  // Async games<->wallets integration over RabbitMQ (ADR-0001, ADR-0008). The relay drains the
+  // outbox on this interval; a message that fails to publish that many times is left for inspection.
+  RABBITMQ_URL: z.string().url(),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(500),
+  OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
+
   // Auth: validate the token issuer, fetch signing keys from the IdP. The games
   // WebSocket gateway validates the JWT on connect (ADR-0003).
   KEYCLOAK_ISSUER: z.string().url(),
