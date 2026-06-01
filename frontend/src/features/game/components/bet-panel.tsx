@@ -16,6 +16,7 @@ const MAX_STAKE_CENTS = 100_000;
 
 export function BetPanel() {
   const phase = useRoundStore((state) => state.phase);
+  const roundNumber = useRoundStore((state) => state.roundNumber);
   const bet = useBetStore((state) => state.bet);
   const placePending = useBetStore((state) => state.placePending);
   const [stake, setStake] = useState("5.00");
@@ -31,14 +32,16 @@ export function BetPanel() {
       }),
   });
 
-  // One Bet per Round (CONTEXT.md): once placed, show its status instead of the form.
-  if (bet) {
-    const isConfirmed = bet.status === BetStatus.CONFIRMED;
+  // One Bet per Round (CONTEXT.md): if the player has a Bet on the Round in progress, show its
+  // status instead of the form. A Bet left over from a previous Round falls through to the form.
+  const betThisRound = bet && bet.roundNumber === roundNumber ? bet : null;
+  if (betThisRound) {
+    const isConfirmed = betThisRound.status === BetStatus.CONFIRMED;
     return (
       <div className="space-y-1">
         <p className="text-sm text-muted-foreground">Sua aposta</p>
         <p className="text-sm tabular-nums">
-          {formatCents(bet.stakeCents)} —{" "}
+          {formatCents(betThisRound.stakeCents)} —{" "}
           <span
             className={isConfirmed ? "text-primary" : "text-muted-foreground"}
           >
