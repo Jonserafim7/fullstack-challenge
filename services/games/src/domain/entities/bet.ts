@@ -29,6 +29,8 @@ export class Bet {
     public readonly stake: Money,
     private currentStatus: BetStatus,
     private confirmedTimestamp: Date | null,
+    private cashedOutMultiplierHundredths: number | null,
+    private cashedOutTimestamp: Date | null,
   ) {}
 
   static place({
@@ -52,6 +54,8 @@ export class Bet {
       stake,
       BetStatus.PENDING,
       null,
+      null,
+      null,
     );
   }
 
@@ -63,6 +67,8 @@ export class Bet {
     stake,
     status,
     confirmedAt,
+    cashedOutMultiplier,
+    cashedOutAt,
   }: {
     betId: string;
     roundNumber: number;
@@ -71,6 +77,8 @@ export class Bet {
     stake: Money;
     status: BetStatus;
     confirmedAt: Date | null;
+    cashedOutMultiplier: number | null;
+    cashedOutAt: Date | null;
   }): Bet {
     return new Bet(
       betId,
@@ -80,6 +88,8 @@ export class Bet {
       stake,
       status,
       confirmedAt,
+      cashedOutMultiplier,
+      cashedOutAt,
     );
   }
 
@@ -91,6 +101,16 @@ export class Bet {
     return this.confirmedTimestamp;
   }
 
+  // The locked multiplier (integer hundredths, 247 = 2.47x) at the instant the player cashed out,
+  // null until then. The payout is stake × this value.
+  get cashedOutMultiplier(): number | null {
+    return this.cashedOutMultiplierHundredths;
+  }
+
+  get cashedOutAt(): Date | null {
+    return this.cashedOutTimestamp;
+  }
+
   // The Wallet debited the stake: the bet is now a real participant in the Round. Idempotency
   // lives in the inbox (a redelivered confirmation never reaches here twice), so a second confirm
   // is a genuine programming error and throws.
@@ -98,6 +118,29 @@ export class Bet {
     this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.CONFIRMED);
     this.currentStatus = BetStatus.CONFIRMED;
     this.confirmedTimestamp = confirmedAt;
+  }
+
+  // The player cashed out while the Round was Running: lock in the multiplier games computed from
+  // the shared curve (the server is the authority — never the client) and record the moment. Only a
+  // Confirmed bet can cash out; the payout credit follows asynchronously and unconditionally (#8).
+  cashOut({
+    multiplierHundredths,
+    at,
+  }: {
+    multiplierHundredths: number;
+    at: Date;
+  }): void {
+    this.ensureCurrentStatusIs(BetStatus.CONFIRMED, BetStatus.CASHED_OUT);
+    this.currentStatus = BetStatus.CASHED_OUT;
+    this.cashedOutMultiplierHundredths = multiplierHundredths;
+    this.cashedOutTimestamp = at;
+  }
+
+  // The Round crashed and this Confirmed bet never cashed out. No money moves — the stake left at
+  // debit-on-bet (ADR-0001); Lost only records that the wager did not win.
+  lose(): void {
+    this.ensureCurrentStatusIs(BetStatus.CONFIRMED, BetStatus.LOST);
+    this.currentStatus = BetStatus.LOST;
   }
 
   private ensureCurrentStatusIs(
