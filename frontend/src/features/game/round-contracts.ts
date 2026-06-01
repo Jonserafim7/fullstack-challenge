@@ -30,6 +30,9 @@ export const RoundEvent = {
   // A Bet's stake was debited and it is now Confirmed. Public; the placing client matches betId
   // against its own pending Bet (#14).
   BET_CONFIRMED: "bet.confirmed",
+  // A player cashed out before the crash. Public; the placing client matches betId to reconcile its
+  // own Bet and refetch the credited balance (#8).
+  BET_CASHED_OUT: "bet.cashed_out",
 } as const;
 
 export interface BettingOpenedEvent {
@@ -64,4 +67,14 @@ export interface BetConfirmedEvent {
   username: string;
   // Stake in integer cents (ADR-0004).
   amountCents: number;
+}
+
+export interface BetCashedOutEvent {
+  betId: string;
+  roundNumber: number;
+  username: string;
+  // Locked multiplier in integer hundredths (247 = 2.47x).
+  multiplierHundredths: number;
+  // Payout in integer cents = stake × locked multiplier.
+  payoutCents: number;
 }

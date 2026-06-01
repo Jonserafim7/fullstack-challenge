@@ -26,3 +26,19 @@ export async function placeBet(stakeCents: number): Promise<PlaceBetResponse> {
   });
   return data;
 }
+
+// The 200 response from POST /games/bet/cashout: the Bet is now Cashed Out with its locked
+// multiplier (integer hundredths, 247 = 2.47x) and payout in cents. The credit lands asynchronously.
+export interface CashOutResponse {
+  betId: string;
+  roundNumber: number;
+  status: BetStatus;
+  stakeCents: number;
+  cashedOutMultiplier: number | null;
+  payoutCents: number | null;
+}
+
+export async function cashOutBet(): Promise<CashOutResponse> {
+  const { data } = await api.post<CashOutResponse>("/games/bet/cashout");
+  return data;
+}
