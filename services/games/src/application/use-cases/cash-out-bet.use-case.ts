@@ -45,7 +45,9 @@ export class CashOutBetUseCase {
     }
 
     const now = new Date();
-    const elapsedMs = now.getTime() - round.startedAt.getTime();
+    // Clamp to >= 0 so the curve floor is 1.00x: a cash out can never lock below the stake, even if
+    // the clock skews backward or the request lands at the exact instant the Round started running.
+    const elapsedMs = Math.max(0, now.getTime() - round.startedAt.getTime());
     const lockedHundredths = Math.floor(
       multiplierAt({ elapsedMs }) * ONE_X_HUNDREDTHS,
     );
