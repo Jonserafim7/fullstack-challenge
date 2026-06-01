@@ -1,11 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { Money } from "@crash/money";
 import { Prisma } from "../../../generated/prisma/client";
 import { DuplicateMessageError } from "../../application/errors/duplicate-message.error";
 import { WalletNotFoundError } from "../../application/errors/wallet-not-found.error";
 import { InboxStore } from "../../application/messaging/inbox-store";
 import { NewOutboxMessage } from "../../application/messaging/outbox-store";
-import { Wallet } from "../../domain/entities/wallet";
+import { InsufficientBalanceError } from "../../domain/errors/insufficient-balance.error";
 import { PrismaService } from "./prisma.service";
 
 const UNIQUE_CONSTRAINT_VIOLATION = "P2002";
@@ -24,7 +23,7 @@ export class PrismaInboxRepository implements InboxStore {
     outbox: NewOutboxMessage[];
   }): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      this.recordKey(tx, { messageKey, type });
+      await this.recordKey(tx, { messageKey, type });
       for (const message of outbox) {
         await tx.outboxMessage.create({ data: toCreateData(message) });
       }
@@ -47,21 +46,24 @@ export class PrismaInboxRepository implements InboxStore {
     await this.prisma.$transaction(async (tx) => {
       await this.recordKey(tx, { messageKey, type });
 
-      const row = await tx.wallet.findUnique({ where: { playerId } });
-      if (!row) {
-        throw new WalletNotFoundError();
+      // Debit atomically so concurrent debits on the same wallet cannot lose an update: the
+      // conditional UPDATE takes a row lock and re-checks the balance, and the `gte` guard is the
+      // balance-never-negative invariant enforced at the row. A redelivery of the same betId is
+      // already a no-op via the inbox key above; this guards the distinct-betId same-wallet race.
+      const amount = BigInt(stakeCents);
+      const { count } = await tx.wallet.updateMany({
+        where: { playerId, balance: { gte: amount } },
+        data: { balance: { decrement: amount } },
+      });
+      if (count === 0) {
+        const exists = await tx.wallet.findUnique({
+          where: { playerId },
+          select: { playerId: true },
+        });
+        throw exists
+          ? new InsufficientBalanceError()
+          : new WalletNotFoundError();
       }
-      // The balance-never-negative invariant stays in the domain: Wallet.debit throws
-      // InsufficientBalanceError, which rolls back the whole transaction (key included).
-      const wallet = Wallet.create({
-        playerId: row.playerId,
-        initialBalance: Money.fromCents(row.balance),
-      });
-      wallet.debit(Money.fromCents(stakeCents));
-      await tx.wallet.update({
-        where: { playerId },
-        data: { balance: wallet.balance.cents },
-      });
 
       await tx.outboxMessage.create({ data: toCreateData(reply) });
     });
