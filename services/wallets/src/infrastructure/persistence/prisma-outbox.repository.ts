@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { CREDIT_ROUTING_KEYS } from "@crash/messaging";
 import { Prisma } from "../../../generated/prisma/client";
 import {
   NewOutboxMessage,
@@ -36,7 +37,16 @@ export class PrismaOutboxRepository implements OutboxStore {
     maxAttempts: number;
   }): Promise<PendingOutboxMessage[]> {
     const rows = await this.prisma.outboxMessage.findMany({
-      where: { status: OutboxStatus.PENDING, attempts: { lt: maxAttempts } },
+      // Most rows give up after maxAttempts so a poison message stops draining. Credits (payout,
+      // refund) are the exception: ADR-0001 makes them unconditional and never abandoned, so a stuck
+      // credit keeps retrying forever (a slow/down wallets only delays it). Commands and replies cap.
+      where: {
+        status: OutboxStatus.PENDING,
+        OR: [
+          { attempts: { lt: maxAttempts } },
+          { routingKey: { in: [...CREDIT_ROUTING_KEYS] } },
+        ],
+      },
       orderBy: { createdAt: "asc" },
       take: limit,
     });
@@ -57,11 +67,29 @@ export class PrismaOutboxRepository implements OutboxStore {
     });
   }
 
-  async markFailed(id: string): Promise<void> {
-    await this.prisma.outboxMessage.update({
+  async markFailed({
+    id,
+    maxAttempts,
+  }: {
+    id: string;
+    maxAttempts: number;
+  }): Promise<void> {
+    const row = await this.prisma.outboxMessage.update({
       where: { id },
       data: { attempts: { increment: 1 } },
+      select: { attempts: true, routingKey: true },
     });
+    // A non-credit row that has now exhausted its attempts is parked FAILED so it stops draining and
+    // becomes visible; credits keep retrying forever (ADR-0001), so they are never parked.
+    const isCredit = (CREDIT_ROUTING_KEYS as readonly string[]).includes(
+      row.routingKey,
+    );
+    if (!isCredit && row.attempts >= maxAttempts) {
+      await this.prisma.outboxMessage.update({
+        where: { id },
+        data: { status: OutboxStatus.FAILED },
+      });
+    }
   }
 }
 
