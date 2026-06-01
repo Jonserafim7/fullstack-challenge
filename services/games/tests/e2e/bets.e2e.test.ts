@@ -55,6 +55,52 @@ async function betStatus(token: string, betId: string): Promise<string> {
   return body.status;
 }
 
+interface CashOutBody {
+  status: string;
+  cashedOutMultiplier: number | null;
+  payoutCents: number | null;
+}
+
+async function cashOut(
+  token: string,
+): Promise<{ httpStatus: number; body: CashOutBody | null }> {
+  const response = await fetch(`${KONG_URL}/games/bet/cashout`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const body =
+    response.status === 200 ? ((await response.json()) as CashOutBody) : null;
+  return { httpStatus: response.status, body };
+}
+
+async function waitForBetStatus(
+  token: string,
+  betId: string,
+  target: string,
+  timeoutMs: number,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let status = "";
+  while (Date.now() < deadline) {
+    status = await betStatus(token, betId);
+    if (status === target) {
+      return status;
+    }
+    await sleep(200);
+  }
+  return status;
+}
+
+async function waitForPhase(target: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if ((await currentPhase()) === target) {
+      return;
+    }
+    await sleep(100);
+  }
+}
+
 // Places exactly one Bet during a Betting window. A 409 means the window closed between the phase
 // read and the request (or a stale prior bet on this Round); we wait for the next Round and retry,
 // so only the first 202 ever debits.
@@ -130,4 +176,77 @@ describe("bets e2e (through Kong)", () => {
     const balanceAfter = await balanceCents(token);
     expect(balanceAfter).toBe(balanceBefore - STAKE_CENTS);
   }, 60_000);
+
+  test("cashes out a Confirmed bet during Running and credits the payout", async () => {
+    // Retry across Rounds: a Round whose Crash Point is near 1.00x crashes before we can POST, so
+    // that bet Loses and we try a fresh one. Eventually a Round runs long enough to cash out.
+    const overallDeadline = Date.now() + 90_000;
+    let cashed: CashOutBody | null = null;
+    let balanceBeforeCashout = 0;
+
+    while (Date.now() < overallDeadline && cashed === null) {
+      const placed = await placeBetDuringBetting(token);
+      const confirmed = await waitForBetStatus(
+        token,
+        placed.betId,
+        "CONFIRMED",
+        15_000,
+      );
+      if (confirmed !== "CONFIRMED") {
+        continue;
+      }
+      // After the debit the wallet is down by the stake; capture it so we can assert the credit.
+      balanceBeforeCashout = await balanceCents(token);
+      await waitForPhase("RUNNING", 15_000);
+      const { httpStatus, body } = await cashOut(token);
+      if (httpStatus === 200) {
+        cashed = body;
+      }
+      // A 409 means the Round crashed before we cashed out (or is no longer Running) — retry.
+    }
+
+    expect(cashed).not.toBeNull();
+    expect(cashed!.status).toBe("CASHED_OUT");
+    expect(cashed!.cashedOutMultiplier).toBeGreaterThan(100);
+    expect(cashed!.payoutCents).toBeGreaterThan(0);
+
+    // The payout credit is asynchronous (ADR-0001); poll until it lands.
+    const expectedBalance = balanceBeforeCashout + cashed!.payoutCents!;
+    const creditDeadline = Date.now() + 15_000;
+    let balance = balanceBeforeCashout;
+    while (Date.now() < creditDeadline) {
+      balance = await balanceCents(token);
+      if (balance === expectedBalance) {
+        break;
+      }
+      await sleep(250);
+    }
+    expect(balance).toBe(expectedBalance);
+  }, 120_000);
+
+  test("settles a Confirmed bet as Lost on crash, moving no money", async () => {
+    const placed = await placeBetDuringBetting(token);
+    const confirmed = await waitForBetStatus(
+      token,
+      placed.betId,
+      "CONFIRMED",
+      15_000,
+    );
+    expect(confirmed).toBe("CONFIRMED");
+
+    const balanceAfterConfirm = await balanceCents(token);
+
+    // Do not cash out: let the Round crash. Settlement marks the still-Confirmed bet Lost.
+    const finalStatus = await waitForBetStatus(
+      token,
+      placed.betId,
+      "LOST",
+      60_000,
+    );
+    expect(finalStatus).toBe("LOST");
+
+    // A Lost bet moves no money — the stake already left at debit-on-bet (ADR-0001).
+    const balanceAfterLoss = await balanceCents(token);
+    expect(balanceAfterLoss).toBe(balanceAfterConfirm);
+  }, 90_000);
 });
