@@ -60,7 +60,14 @@ export class OutboxRelay
         maxAttempts: this.maxAttempts,
       });
       for (const message of pending) {
-        await this.publish(message);
+        try {
+          await this.publish(message);
+        } catch (error) {
+          this.logger.error(
+            `Failed to relay outbox message ${message.messageKey}`,
+            error,
+          );
+        }
       }
     } catch (error) {
       this.logger.error("Failed to drain the outbox", error);
@@ -81,13 +88,17 @@ export class OutboxRelay
         messageId: message.messageKey,
         contentType: "application/json",
       });
-      await this.outbox.markPublished(message.id);
     } catch (error) {
       this.logger.warn(
         `Failed to publish ${message.messageKey}; leaving it pending for retry`,
         error,
       );
       await this.outbox.markFailed(message.id);
+      return;
     }
+    // Published and confirmed by the broker. If recording the status now fails, the row stays
+    // PENDING and is republished next tick (at-least-once, deduplicated downstream); a confirmed
+    // publish must not count as a failed attempt.
+    await this.outbox.markPublished(message.id);
   }
 }

@@ -1,4 +1,4 @@
-import { RabbitSubscribe } from "@golevelup/nestjs-rabbitmq";
+import { Nack, RabbitSubscribe } from "@golevelup/nestjs-rabbitmq";
 import { Injectable, Logger } from "@nestjs/common";
 import {
   DeadLetterRoutingKey,
@@ -26,8 +26,13 @@ export class SmokeReplyConsumer {
       deadLetterRoutingKey: DeadLetterRoutingKey.GAMES,
     },
   })
-  onSmokePong(envelope: MessageEnvelope): void {
-    const { correlationId } = envelope.payload as SmokePayload;
-    this.logger.log(`Smoke round-trip complete: ${correlationId}`);
+  onSmokePong(envelope: MessageEnvelope): Nack | undefined {
+    const payload = envelope?.payload as SmokePayload | undefined;
+    if (!payload?.correlationId) {
+      this.logger.warn("Discarding a smoke pong with no correlation id");
+      return new Nack(false);
+    }
+    this.logger.log(`Smoke round-trip complete: ${payload.correlationId}`);
+    return undefined;
   }
 }
