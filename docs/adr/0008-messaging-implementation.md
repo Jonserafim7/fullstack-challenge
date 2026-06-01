@@ -63,3 +63,35 @@ A single relay per service wakes every `OUTBOX_POLL_INTERVAL_MS` (default 500 ms
 - New Prisma models + migrations in both services; they auto-apply via the existing `db:deploy` Dockerfile step, preserving zero-manual-step `docker:up`.
 - A poison message dead-letters after a nack (no requeue) and collects in the service's `*.dlq`; full exponential-backoff retry queues are deferred — #6 proves the dead-letter path exists, not a hardened retry policy.
 - A publish that fails while the broker is unreachable blocks that relay tick until the connection is restored (the confirm promise is buffered); the per-tick guard prevents overlap. Acceptable for local/dev where the broker is brought up healthy before the services.
+
+## Addendum (2026-06-01): exponential-backoff retry queues and the outbox terminal state (#7)
+
+#7 implements the retry policy this ADR deferred, hardening the consumer (processing) path that #6's straight-to-DLQ nack skipped, and makes the producer (outbox) give-up explicit.
+
+### Consumer-side: a per-service delay queue with per-message TTL
+
+A transient processing failure no longer dead-letters immediately. Instead the consumer **republishes** the message to a per-service delay queue and acks the original, handing ownership to the retry path:
+
+```
+crash.events ──debit/confirm/…──▶ wallets.inbox ──(handler throws)──┐
+      ▲                                                              │ republish retry.wallets
+      │ redeliver.wallets (x-dead-letter-routing-key, on TTL expiry) │ expiration = base × 2^attempt
+      │                                                              ▼
+      └──────────────────────────────────────────────  wallets.retry (delay queue, no consumer)
+                                                                     │ x-retry-count >= N
+                                                                     ▼
+                                                              crash.dlx ──▶ wallets.dlq (poison)
+```
+
+- The delay queue (`wallets.retry` / `games.retry`) is bound to `crash.events` under `retry.<svc>` and carries `x-dead-letter-exchange = crash.events`, `x-dead-letter-routing-key = redeliver.<svc>`. When the per-message TTL elapses, the broker routes the message back to the inbox (the inbox also binds `redeliver.<svc>`). It is never consumed — messages only wait and expire.
+- The attempt count rides in an `x-retry-count` header (it survives the dead-letter round trip). The pure `nextRetry` policy computes `delayMs = base × 2^attempt` and caps at `INBOX_RETRY_MAX_ATTEMPTS`; past the cap the consumer `Nack(false)`s to the existing `*.dlq`. If the republish itself fails, the message is requeued rather than lost.
+- The inbox dispatches by `envelope.type`, so a single `redeliver.<svc>` key is enough — the original routing key need not be preserved. Business outcomes (insufficient funds → a rejection reply) and `DuplicateMessageError` never reach this path, so only genuine transient/poison failures are retried.
+- **Trade-off (accepted):** a single delay queue with per-message TTL can head-of-line-block under load (a long-TTL message at the head delays shorter-TTL ones behind it). At this volume it is irrelevant; tiered delay queues are the upgrade if throughput ever demands it. No broker plugin is required.
+
+### Producer-side: `FAILED` terminal status and the never-abandon credit set
+
+The outbox `markFailed` previously only incremented `attempts`; a row that exhausted `OUTBOX_MAX_ATTEMPTS` lingered as an invisible `PENDING`. A `FAILED` terminal status now makes giving up explicit. The single payout exemption is generalized to a shared `CREDIT_ROUTING_KEYS` set (`wallet.payout`, `wallet.refund`): credits are unconditional and **never** abandoned (ADR-0001), so they keep retrying and never reach `FAILED`. Both are new *values* of existing `String` columns — no migration.
+
+### New env knobs
+
+`INBOX_RETRY_BASE_MS` (default 1000) and `INBOX_RETRY_MAX_ATTEMPTS` (default 5) in both services.
