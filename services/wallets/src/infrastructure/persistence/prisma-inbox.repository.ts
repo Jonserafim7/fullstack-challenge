@@ -4,7 +4,6 @@ import { DuplicateMessageError } from "../../application/errors/duplicate-messag
 import { WalletNotFoundError } from "../../application/errors/wallet-not-found.error";
 import { InboxStore } from "../../application/messaging/inbox-store";
 import { NewOutboxMessage } from "../../application/messaging/outbox-store";
-import { InsufficientBalanceError } from "../../domain/errors/insufficient-balance.error";
 import { PrismaService } from "./prisma.service";
 
 const UNIQUE_CONSTRAINT_VIOLATION = "P2002";
@@ -35,13 +34,15 @@ export class PrismaInboxRepository implements InboxStore {
     type,
     playerId,
     stakeCents,
-    reply,
+    confirmReply,
+    rejectReply,
   }: {
     messageKey: string;
     type: string;
     playerId: string;
     stakeCents: number;
-    reply: NewOutboxMessage;
+    confirmReply: NewOutboxMessage;
+    rejectReply: NewOutboxMessage;
   }): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await this.recordKey(tx, { messageKey, type });
@@ -55,17 +56,23 @@ export class PrismaInboxRepository implements InboxStore {
         where: { playerId, balance: { gte: amount } },
         data: { balance: { decrement: amount } },
       });
-      if (count === 0) {
-        const exists = await tx.wallet.findUnique({
-          where: { playerId },
-          select: { playerId: true },
-        });
-        throw exists
-          ? new InsufficientBalanceError()
-          : new WalletNotFoundError();
+      if (count > 0) {
+        await tx.outboxMessage.create({ data: toCreateData(confirmReply) });
+        return;
       }
 
-      await tx.outboxMessage.create({ data: toCreateData(reply) });
+      // No row was debited: either funds fell short or the wallet is missing. A missing wallet is a
+      // genuine anomaly (every player is seeded one) — throw so it retries and, if it persists,
+      // dead-letters for inspection. Insufficient funds is a normal outcome — enqueue the rejection
+      // reply in this same transaction so the dedup key and the reply commit together (#7).
+      const wallet = await tx.wallet.findUnique({
+        where: { playerId },
+        select: { playerId: true },
+      });
+      if (!wallet) {
+        throw new WalletNotFoundError();
+      }
+      await tx.outboxMessage.create({ data: toCreateData(rejectReply) });
     });
   }
 

@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import {
   debitConfirmedKey,
   debitKey,
+  debitRejectedKey,
+  DebitRejectionReason,
   MessageType,
   RoutingKey,
   type DebitCommandPayload,
+  type DebitRejectedPayload,
   type MessageEnvelope,
 } from "@crash/messaging";
 import { DuplicateMessageError } from "../../src/application/errors/duplicate-message.error";
@@ -16,12 +19,14 @@ interface RecordedDebit {
   messageKey: string;
   playerId: string;
   stakeCents: number;
-  reply: NewOutboxMessage;
+  confirmReply: NewOutboxMessage;
+  rejectReply: NewOutboxMessage;
 }
 
 // A fake inbox that mimics the database primary-key dedup: the first time a key is recorded it
 // keeps the debit; a second attempt with the same key throws DuplicateMessageError, exactly as
-// the real Prisma adapter translates a P2002 unique violation.
+// the real Prisma adapter translates a P2002 unique violation. The confirm-vs-reject decision is
+// the real adapter's (it depends on the balance), so the use-case just hands both replies down.
 function buildInbox(): { inbox: InboxStore; debits: RecordedDebit[] } {
   const seenKeys = new Set<string>();
   const debits: RecordedDebit[] = [];
@@ -30,19 +35,27 @@ function buildInbox(): { inbox: InboxStore; debits: RecordedDebit[] } {
       messageKey,
       playerId,
       stakeCents,
-      reply,
+      confirmReply,
+      rejectReply,
     }: {
       messageKey: string;
       type: string;
       playerId: string;
       stakeCents: number;
-      reply: NewOutboxMessage;
+      confirmReply: NewOutboxMessage;
+      rejectReply: NewOutboxMessage;
     }): Promise<void> => {
       if (seenKeys.has(messageKey)) {
         throw new DuplicateMessageError(messageKey);
       }
       seenKeys.add(messageKey);
-      debits.push({ messageKey, playerId, stakeCents, reply });
+      debits.push({
+        messageKey,
+        playerId,
+        stakeCents,
+        confirmReply,
+        rejectReply,
+      });
     },
   } as InboxStore;
   return { inbox, debits };
@@ -58,7 +71,7 @@ function debitCommand(betId: string): MessageEnvelope<DebitCommandPayload> {
 }
 
 describe("DebitWallet (inbox dedup)", () => {
-  test("applies a debit once, enqueuing a single confirmation reply", async () => {
+  test("applies a debit once, handing down both the confirmation and rejection replies", async () => {
     const { inbox, debits } = buildInbox();
     const useCase = new DebitWalletUseCase(inbox);
 
@@ -67,9 +80,21 @@ describe("DebitWallet (inbox dedup)", () => {
     expect(debits).toHaveLength(1);
     expect(debits[0]?.playerId).toBe("player-1");
     expect(debits[0]?.stakeCents).toBe(500);
-    expect(debits[0]?.reply.messageKey).toBe(debitConfirmedKey("bet-1"));
-    expect(debits[0]?.reply.routingKey).toBe(RoutingKey.BET_DEBIT_CONFIRMED);
-    expect((debits[0]?.reply.payload as { betId: string }).betId).toBe("bet-1");
+
+    const confirm = debits[0]?.confirmReply;
+    expect(confirm?.messageKey).toBe(debitConfirmedKey("bet-1"));
+    expect(confirm?.routingKey).toBe(RoutingKey.BET_DEBIT_CONFIRMED);
+    expect((confirm?.payload as { betId: string }).betId).toBe("bet-1");
+
+    const reject = debits[0]?.rejectReply;
+    expect(reject?.messageKey).toBe(debitRejectedKey("bet-1"));
+    expect(reject?.routingKey).toBe(RoutingKey.BET_DEBIT_REJECTED);
+    const rejectPayload = reject?.payload as DebitRejectedPayload;
+    expect(rejectPayload.betId).toBe("bet-1");
+    expect(rejectPayload.playerId).toBe("player-1");
+    expect(rejectPayload.reason).toBe(
+      DebitRejectionReason.INSUFFICIENT_BALANCE,
+    );
   });
 
   test("ignores a redelivered debit with the same key, moving money once", async () => {
