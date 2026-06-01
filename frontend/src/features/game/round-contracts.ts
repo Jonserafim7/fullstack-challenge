@@ -1,0 +1,56 @@
+// The contract between the games service (emits) and this client (consumes): the REST round
+// snapshot and the server->client WebSocket event payloads. Consolidated here as the single
+// source the game feature imports; the planned home is a shared @crash/contracts package once
+// the event shapes stabilize.
+
+export const RoundPhase = {
+  BETTING: "BETTING",
+  RUNNING: "RUNNING",
+  CRASHED: "CRASHED",
+  SETTLED: "SETTLED",
+} as const;
+export type RoundPhase = (typeof RoundPhase)[keyof typeof RoundPhase];
+
+// The REST snapshot a client hydrates from on connect (ADR-0003). crashPoint is in integer
+// hundredths (247 = 2.47x) and stays null until the Round has Crashed.
+export interface RoundSnapshot {
+  roundNumber: number;
+  phase: RoundPhase;
+  crashPoint: number | null;
+  bettingEndsAt: string | null;
+  startedAt: string | null;
+  crashedAt: string | null;
+}
+
+// The server->client phase events (ADR-0003); mirrors the games gateway's RoundEvent names.
+export const RoundEvent = {
+  BETTING_OPENED: "round.betting_opened",
+  RUNNING: "round.running",
+  CRASHED: "round.crashed",
+} as const;
+
+export interface BettingOpenedEvent {
+  roundNumber: number;
+  seedHash: string;
+  bettingEndsAt: string;
+}
+
+export interface RunningEvent {
+  roundNumber: number;
+  startedAt: string;
+}
+
+export interface CrashVerification {
+  serverSeed: string;
+  previousSeed: string;
+  clientSeed: string;
+  houseEdge: number;
+}
+
+export interface CrashedEvent {
+  roundNumber: number;
+  // Same integer-hundredths unit as RoundSnapshot.crashPoint (247 = 2.47x).
+  crashPoint: number;
+  crashedAt: string;
+  verification: CrashVerification;
+}

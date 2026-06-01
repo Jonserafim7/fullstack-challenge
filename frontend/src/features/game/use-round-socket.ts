@@ -1,15 +1,15 @@
 import { useEffect } from "react";
 import { io, type Socket } from "socket.io-client";
-import { auth } from "@/auth/auth";
+import { auth } from "@/lib/auth/auth";
 import { queryClient } from "@/lib/query-client";
-import { fetchCurrentRound, roundHistoryQueryKey } from "@/queries/round";
+import { fetchCurrentRound, roundHistoryQueryKey } from "./round-api";
+import { useRoundStore } from "./round-store";
 import {
   RoundEvent,
-  useRoundStore,
   type BettingOpenedEvent,
   type CrashedEvent,
   type RunningEvent,
-} from "./round-store";
+} from "./round-contracts";
 
 // Opens the live Round connection: hydrate the current phase from REST, then apply WebSocket
 // deltas (ADR-0003). The socket reaches the games gateway through Kong (path /games/socket.io);

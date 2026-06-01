@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { auth } from "@/auth/auth";
+import { auth } from "@/lib/auth/auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,

@@ -1,25 +1,7 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-
-export const RoundPhase = {
-  BETTING: "BETTING",
-  RUNNING: "RUNNING",
-  CRASHED: "CRASHED",
-  SETTLED: "SETTLED",
-} as const;
-export type RoundPhase = (typeof RoundPhase)[keyof typeof RoundPhase];
-
-// The REST snapshot a client hydrates from on connect (ADR-0003). crashPoint is in integer
-// hundredths (247 = 2.47x) and stays null until the Round has Crashed.
-export interface RoundSnapshot {
-  roundNumber: number;
-  phase: RoundPhase;
-  crashPoint: number | null;
-  bettingEndsAt: string | null;
-  startedAt: string | null;
-  crashedAt: string | null;
-}
+import { type RoundSnapshot } from "./round-contracts";
 
 export async function fetchCurrentRound(): Promise<RoundSnapshot | null> {
   try {

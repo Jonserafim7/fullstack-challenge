@@ -1,5 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
-import { auth } from "./auth/auth";
+import { auth } from "./lib/auth/auth";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
