@@ -33,6 +33,9 @@ export const RoundEvent = {
   // A player cashed out before the crash. Public; the placing client matches betId to reconcile its
   // own Bet and refetch the credited balance (#8).
   BET_CASHED_OUT: "bet.cashed_out",
+  // A Bet was Rejected (the Wallet refused the debit). Private — delivered only to the placing
+  // player, never broadcast, since a refusal reveals their funds (#7).
+  BET_REJECTED: "bet.rejected",
 } as const;
 
 export interface BettingOpenedEvent {
@@ -77,4 +80,13 @@ export interface BetCashedOutEvent {
   multiplierHundredths: number;
   // Payout in integer cents = stake × locked multiplier.
   payoutCents: number;
+}
+
+// Private (owner-only): the Wallet refused this player's debit. The placing client matches betId to
+// reflect Rejected on its own Bet and shows the reason (#7).
+export interface BetRejectedEvent {
+  betId: string;
+  roundNumber: number;
+  playerId: string;
+  reason: string;
 }

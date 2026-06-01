@@ -75,6 +75,12 @@ function ActiveBetView({ bet }: { bet: ActiveBet }) {
   // Derived (ADR-0001): a Confirmed bet that never cashed out has Lost once the Round is terminal.
   // The server records this authoritatively; the client shows it from the crash it already has.
   const isLost = isConfirmed && isTerminal;
+  // Derived (ADR-0001): a bet still Pending once Betting has closed missed the window and is Voided.
+  // Self-correcting — a debit that confirmed just in time arrives as bet.confirmed and flips it; a
+  // debit that lands too late is voided-then-refunded server-side and never confirms, so it stays.
+  const isVoided =
+    bet.status === BetStatus.VOIDED ||
+    (bet.status === BetStatus.PENDING && (isRunning || isTerminal));
 
   const canCashOut = isConfirmed && isRunning && !mutation.isPending;
   const potentialPayoutCents =
@@ -90,6 +96,7 @@ function ActiveBetView({ bet }: { bet: ActiveBet }) {
         <BetStatusLabel
           status={bet.status}
           isLost={isLost}
+          isVoided={isVoided}
           cashedOutMultiplier={bet.cashedOutMultiplier}
           payoutCents={bet.payoutCents}
         />
@@ -124,11 +131,13 @@ function ActiveBetView({ bet }: { bet: ActiveBet }) {
 function BetStatusLabel({
   status,
   isLost,
+  isVoided,
   cashedOutMultiplier,
   payoutCents,
 }: {
   status: BetStatus;
   isLost: boolean;
+  isVoided: boolean;
   cashedOutMultiplier: number | null;
   payoutCents: number | null;
 }) {
@@ -142,8 +151,16 @@ function BetStatusLabel({
       </span>
     );
   }
+  if (status === BetStatus.REJECTED) {
+    return (
+      <span className="text-destructive">Recusada — saldo insuficiente</span>
+    );
+  }
   if (isLost) {
     return <span className="text-destructive">Perdeu</span>;
+  }
+  if (isVoided) {
+    return <span className="text-muted-foreground">Anulada</span>;
   }
   if (status === BetStatus.CONFIRMED) {
     return <span className="text-primary">Confirmada</span>;

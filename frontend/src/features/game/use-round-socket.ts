@@ -10,6 +10,7 @@ import {
   RoundEvent,
   type BetCashedOutEvent,
   type BetConfirmedEvent,
+  type BetRejectedEvent,
   type BettingOpenedEvent,
   type CrashedEvent,
   type RunningEvent,
@@ -70,6 +71,14 @@ export function useRoundSocket(): void {
       if (bet?.betId === event.betId) {
         confirm(event.betId);
         void queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      }
+    });
+    socket.on(RoundEvent.BET_REJECTED, (event: BetRejectedEvent) => {
+      const { bet, reject } = useBetStore.getState();
+      // Private event: the wallet refused this player's debit. Reflect Rejected on the placer's own
+      // bet (no money moved, so the balance is unchanged — no refetch).
+      if (bet?.betId === event.betId) {
+        reject(event.betId);
       }
     });
     socket.on(RoundEvent.BET_CASHED_OUT, (event: BetCashedOutEvent) => {
