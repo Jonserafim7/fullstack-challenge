@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { auth } from "@/auth/auth";
 import { useBalanceQuery } from "@/queries/balance";
 import { RoundPhase } from "@/queries/round";
 import { useRoundStore } from "@/realtime/round-store";
 import { useRoundSocket } from "@/realtime/useRoundSocket";
+import { MultiplierCanvas } from "@/realtime/multiplier-canvas";
+import { HistoryStrip } from "@/realtime/history-strip";
 import { formatCents } from "@/lib/format";
+import { useSecondsUntil } from "@/lib/use-seconds-until";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -91,12 +93,9 @@ function LiveRound() {
   const roundNumber = useRoundStore((state) => state.roundNumber);
   const phase = useRoundStore((state) => state.phase);
   const bettingEndsAt = useRoundStore((state) => state.bettingEndsAt);
-  const crashPoint = useRoundStore((state) => state.crashPoint);
-  const seedHash = useRoundStore((state) => state.seedHash);
 
   const isBetting = phase === RoundPhase.BETTING;
   const secondsToClose = useSecondsUntil(isBetting ? bettingEndsAt : null);
-  const isCrashed = phase === RoundPhase.CRASHED;
 
   return (
     <Card>
@@ -111,50 +110,21 @@ function LiveRound() {
           {phase ? phaseLabels[phase] : "Aguardando rodada…"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
+        <MultiplierCanvas />
         {isBetting && secondsToClose !== null && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground">
             Apostas fecham em{" "}
             <span className="font-semibold tabular-nums text-foreground">
               {secondsToClose.toFixed(1)}s
             </span>
           </p>
         )}
-        <p className="text-sm text-muted-foreground">Crash Point</p>
-        <p
-          className={`text-4xl font-bold tabular-nums ${
-            isCrashed ? "text-destructive" : "text-muted-foreground"
-          }`}
-        >
-          {crashPoint !== null ? `${(crashPoint / 100).toFixed(2)}x` : "—"}
-        </p>
-        {seedHash && (
-          <p className="truncate text-xs text-muted-foreground">
-            seedHash: {seedHash}
-          </p>
-        )}
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Últimas rodadas</p>
+          <HistoryStrip />
+        </div>
       </CardContent>
     </Card>
   );
-}
-
-// Live seconds remaining until a target ISO timestamp; null when there is no target.
-function useSecondsUntil(target: string | null): number | null {
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!target) {
-      setSecondsLeft(null);
-      return;
-    }
-    const tick = () => {
-      const remainingMs = new Date(target).getTime() - Date.now();
-      setSecondsLeft(Math.max(0, remainingMs / 1000));
-    };
-    tick();
-    const intervalId = setInterval(tick, 200);
-    return () => clearInterval(intervalId);
-  }, [target]);
-
-  return secondsLeft;
 }
