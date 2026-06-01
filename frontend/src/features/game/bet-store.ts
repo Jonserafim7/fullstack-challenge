@@ -24,6 +24,7 @@ interface BetState {
     bet: Omit<ActiveBet, "cashedOutMultiplier" | "payoutCents">,
   ) => void;
   confirm: (betId: string) => void;
+  reject: (betId: string) => void;
   cashOut: (args: {
     betId: string;
     cashedOutMultiplier: number;
@@ -41,6 +42,15 @@ export const useBetStore = create<BetState>((set) => ({
     set((state) =>
       state.bet?.betId === betId
         ? { bet: { ...state.bet, status: BetStatus.CONFIRMED } }
+        : {},
+    ),
+
+  // The Wallet refused the debit: no money moved, the bet never participates. Only flips a still
+  // tracked, matching bet so a stale rejection cannot clobber a newer one.
+  reject: (betId) =>
+    set((state) =>
+      state.bet?.betId === betId
+        ? { bet: { ...state.bet, status: BetStatus.REJECTED } }
         : {},
     ),
 
