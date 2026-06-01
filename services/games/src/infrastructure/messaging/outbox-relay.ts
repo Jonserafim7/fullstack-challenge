@@ -93,7 +93,10 @@ export class OutboxRelay
         `Failed to publish ${message.messageKey}; leaving it pending for retry`,
         error,
       );
-      await this.outbox.markFailed(message.id);
+      await this.outbox.markFailed({
+        id: message.id,
+        maxAttempts: this.maxAttempts,
+      });
       return;
     }
     // Published and confirmed by the broker. If recording the status now fails, the row stays

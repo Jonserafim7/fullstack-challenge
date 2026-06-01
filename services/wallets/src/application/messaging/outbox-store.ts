@@ -5,6 +5,10 @@
 export const OutboxStatus = {
   PENDING: "PENDING",
   PUBLISHED: "PUBLISHED",
+  // Terminal: a non-credit row that exhausted its publish attempts. It stops draining and is left
+  // visible for inspection instead of lingering as an invisible PENDING. Credits (payout, refund)
+  // are never abandoned (ADR-0001), so they never reach FAILED (#7).
+  FAILED: "FAILED",
 } as const;
 export type OutboxStatus = (typeof OutboxStatus)[keyof typeof OutboxStatus];
 
@@ -31,5 +35,7 @@ export abstract class OutboxStore {
     maxAttempts: number;
   }): Promise<PendingOutboxMessage[]>;
   abstract markPublished(id: string): Promise<void>;
-  abstract markFailed(id: string): Promise<void>;
+  // Records a failed publish: increments the attempt count and, once it crosses maxAttempts, parks a
+  // non-credit row FAILED so it stops draining. Credits keep retrying forever (ADR-0001).
+  abstract markFailed(args: { id: string; maxAttempts: number }): Promise<void>;
 }
