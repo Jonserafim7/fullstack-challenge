@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { io, type Socket } from "socket.io-client";
 import { auth } from "@/auth/auth";
-import { fetchCurrentRound } from "@/queries/round";
+import { queryClient } from "@/lib/query-client";
+import { fetchCurrentRound, roundHistoryQueryKey } from "@/queries/round";
 import {
   RoundEvent,
   useRoundStore,
@@ -53,7 +54,11 @@ export function useRoundSocket(): void {
       applyBettingOpened(event),
     );
     socket.on(RoundEvent.RUNNING, (event: RunningEvent) => applyRunning(event));
-    socket.on(RoundEvent.CRASHED, (event: CrashedEvent) => applyCrashed(event));
+    socket.on(RoundEvent.CRASHED, (event: CrashedEvent) => {
+      applyCrashed(event);
+      // The just-crashed Round is now terminal; refresh the history strip (ADR-0006).
+      void queryClient.invalidateQueries({ queryKey: roundHistoryQueryKey });
+    });
 
     return () => {
       active = false;
