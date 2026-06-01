@@ -4,6 +4,9 @@ const KONG_URL = process.env.KONG_URL ?? "http://localhost:8000";
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080";
 // Minimum stake (R$1,00) keeps the shared test wallet usable across repeated runs.
 const STAKE_CENTS = 100;
+// Maximum stake (R$1.000,00). A bet this large outruns a wallet that holds less, which is how the
+// rejection test forces an insufficient-funds refusal without a balance-reset endpoint.
+const MAX_STAKE_CENTS = 100_000;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -104,7 +107,10 @@ async function waitForPhase(target: string, timeoutMs: number): Promise<void> {
 // Places exactly one Bet during a Betting window. A 409 means the window closed between the phase
 // read and the request (or a stale prior bet on this Round); we wait for the next Round and retry,
 // so only the first 202 ever debits.
-async function placeBetDuringBetting(token: string): Promise<{
+async function placeBetDuringBetting(
+  token: string,
+  stakeCents: number = STAKE_CENTS,
+): Promise<{
   betId: string;
   status: string;
 }> {
@@ -122,7 +128,7 @@ async function placeBetDuringBetting(token: string): Promise<{
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ stakeCents: STAKE_CENTS }),
+      body: JSON.stringify({ stakeCents }),
     });
     if (response.status === 202) {
       return (await response.json()) as { betId: string; status: string };
@@ -222,6 +228,40 @@ describe("bets e2e (through Kong)", () => {
       await sleep(250);
     }
     expect(balance).toBe(expectedBalance);
+  }, 120_000);
+
+  test("rejects an insufficient-funds bet through the broker, moving no money", async () => {
+    // The bet must outrun the balance to be refused. The shared wallet sits at or below the max
+    // stake, but a prior run's cashouts could nudge it above; drain in minimum-stake steps (each a
+    // committed debit) only until it dips below, so the wallet stays usable for the other tests.
+    const drainDeadline = Date.now() + 90_000;
+    while (
+      Date.now() < drainDeadline &&
+      (await balanceCents(token)) >= MAX_STAKE_CENTS
+    ) {
+      const filler = await placeBetDuringBetting(token, STAKE_CENTS);
+      await waitForBetStatus(token, filler.betId, "CONFIRMED", 15_000);
+    }
+
+    const balanceBefore = await balanceCents(token);
+    expect(balanceBefore).toBeLessThan(MAX_STAKE_CENTS);
+
+    const placed = await placeBetDuringBetting(token, MAX_STAKE_CENTS);
+    expect(placed.status).toBe("PENDING");
+
+    // wallets refuses the debit (insufficient funds) and replies bet.debit-rejected; games marks the
+    // Bet Rejected. The reply travels the real broker, so poll until it lands.
+    const finalStatus = await waitForBetStatus(
+      token,
+      placed.betId,
+      "REJECTED",
+      15_000,
+    );
+    expect(finalStatus).toBe("REJECTED");
+
+    // A rejected debit moves no money — the balance is exactly what it was before.
+    const balanceAfter = await balanceCents(token);
+    expect(balanceAfter).toBe(balanceBefore);
   }, 120_000);
 
   test("settles a Confirmed bet as Lost on crash, moving no money", async () => {
