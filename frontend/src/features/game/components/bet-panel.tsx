@@ -3,21 +3,156 @@ import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
 import { RoundPhase } from "../round-contracts";
 import { useRoundStore } from "../round-store";
-import { useBetStore } from "../bet-store";
-import { BetStatus, placeBet } from "../bet-api";
+import { useBetStore, type ActiveBet } from "../bet-store";
+import { useLiveMultiplier } from "../use-live-multiplier";
+import { BetStatus, cashOutBet, placeBet } from "../bet-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCents } from "@/lib/format";
+import { queryClient } from "@/lib/query-client";
+import { walletQueryKey } from "@/features/wallet";
+import { formatCents, formatMultiplier } from "@/lib/format";
 
 // README stake bounds: R$1,00–R$1.000,00, held as integer cents (ADR-0004). Mirrors the server's
 // MIN/MAX so the button disables before a request that the API would reject anyway.
 const MIN_STAKE_CENTS = 100;
 const MAX_STAKE_CENTS = 100_000;
 
+// The payout credit lands asynchronously after cash out (ADR-0001), so we add it to the balance
+// optimistically and refetch a moment later to reconcile — by then the unconditional credit has
+// landed, so the refetch confirms rather than corrects the optimistic value.
+const BALANCE_RECONCILE_DELAY_MS = 2_000;
+
+interface WalletData {
+  playerId: string;
+  balance: number;
+}
+
 export function BetPanel() {
-  const phase = useRoundStore((state) => state.phase);
   const roundNumber = useRoundStore((state) => state.roundNumber);
   const bet = useBetStore((state) => state.bet);
+
+  // One Bet per Round (CONTEXT.md): if the player has a Bet on the Round in progress, show its
+  // status (and the cash-out control) instead of the form. A Bet left over from a previous Round
+  // falls through to the form.
+  const betThisRound = bet && bet.roundNumber === roundNumber ? bet : null;
+  if (betThisRound) {
+    return <ActiveBetView bet={betThisRound} />;
+  }
+
+  return <PlaceBetForm />;
+}
+
+function ActiveBetView({ bet }: { bet: ActiveBet }) {
+  const phase = useRoundStore((state) => state.phase);
+  const liveMultiplier = useLiveMultiplier();
+  const cashOut = useBetStore((state) => state.cashOut);
+
+  const mutation = useMutation({
+    mutationFn: cashOutBet,
+    onSuccess: (result) => {
+      if (result.cashedOutMultiplier === null || result.payoutCents === null) {
+        return;
+      }
+      cashOut({
+        betId: result.betId,
+        cashedOutMultiplier: result.cashedOutMultiplier,
+        payoutCents: result.payoutCents,
+      });
+      // Optimistic credit: show the winnings now, then reconcile once the async credit lands.
+      queryClient.setQueryData<WalletData>(walletQueryKey, (old) =>
+        old ? { ...old, balance: old.balance + result.payoutCents! } : old,
+      );
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      }, BALANCE_RECONCILE_DELAY_MS);
+    },
+  });
+
+  const isRunning = phase === RoundPhase.RUNNING;
+  const isTerminal =
+    phase === RoundPhase.CRASHED || phase === RoundPhase.SETTLED;
+  const isConfirmed = bet.status === BetStatus.CONFIRMED;
+  // Derived (ADR-0001): a Confirmed bet that never cashed out has Lost once the Round is terminal.
+  // The server records this authoritatively; the client shows it from the crash it already has.
+  const isLost = isConfirmed && isTerminal;
+
+  const canCashOut = isConfirmed && isRunning && !mutation.isPending;
+  const potentialPayoutCents =
+    liveMultiplier !== null
+      ? Math.round(bet.stakeCents * liveMultiplier)
+      : bet.stakeCents;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">Sua aposta</p>
+      <p className="text-sm tabular-nums">
+        {formatCents(bet.stakeCents)} —{" "}
+        <BetStatusLabel
+          status={bet.status}
+          isLost={isLost}
+          cashedOutMultiplier={bet.cashedOutMultiplier}
+          payoutCents={bet.payoutCents}
+        />
+      </p>
+
+      {(isConfirmed && isRunning) || mutation.isPending ? (
+        <Button
+          type="button"
+          className="w-full"
+          disabled={!canCashOut}
+          onClick={() => {
+            if (canCashOut) {
+              mutation.mutate();
+            }
+          }}
+        >
+          {mutation.isPending
+            ? "Sacando…"
+            : `Sacar ${formatCents(potentialPayoutCents)}`}
+        </Button>
+      ) : null}
+
+      {mutation.isError && (
+        <p className="text-xs text-destructive">
+          {cashOutErrorMessage(mutation.error)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BetStatusLabel({
+  status,
+  isLost,
+  cashedOutMultiplier,
+  payoutCents,
+}: {
+  status: BetStatus;
+  isLost: boolean;
+  cashedOutMultiplier: number | null;
+  payoutCents: number | null;
+}) {
+  if (status === BetStatus.CASHED_OUT) {
+    const multiplier =
+      cashedOutMultiplier !== null ? cashedOutMultiplier / 100 : 1;
+    return (
+      <span className="font-medium text-emerald-500">
+        Sacou em {formatMultiplier(multiplier)} (+
+        {formatCents(payoutCents ?? 0)})
+      </span>
+    );
+  }
+  if (isLost) {
+    return <span className="text-destructive">Perdeu</span>;
+  }
+  if (status === BetStatus.CONFIRMED) {
+    return <span className="text-primary">Confirmada</span>;
+  }
+  return <span className="text-muted-foreground">Pendente…</span>;
+}
+
+function PlaceBetForm() {
+  const phase = useRoundStore((state) => state.phase);
   const placePending = useBetStore((state) => state.placePending);
   const [stake, setStake] = useState("5.00");
 
@@ -31,26 +166,6 @@ export function BetPanel() {
         status: placed.status,
       }),
   });
-
-  // One Bet per Round (CONTEXT.md): if the player has a Bet on the Round in progress, show its
-  // status instead of the form. A Bet left over from a previous Round falls through to the form.
-  const betThisRound = bet && bet.roundNumber === roundNumber ? bet : null;
-  if (betThisRound) {
-    const isConfirmed = betThisRound.status === BetStatus.CONFIRMED;
-    return (
-      <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">Sua aposta</p>
-        <p className="text-sm tabular-nums">
-          {formatCents(betThisRound.stakeCents)} —{" "}
-          <span
-            className={isConfirmed ? "text-primary" : "text-muted-foreground"}
-          >
-            {isConfirmed ? "Confirmada" : "Pendente…"}
-          </span>
-        </p>
-      </div>
-    );
-  }
 
   const isBetting = phase === RoundPhase.BETTING;
   const stakeCents = reaisToCents(stake);
@@ -127,4 +242,11 @@ function betErrorMessage(error: unknown): string {
     }
   }
   return "Não foi possível apostar. Tente novamente.";
+}
+
+function cashOutErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error) && error.response?.status === 409) {
+    return "Tarde demais — a rodada já crashou.";
+  }
+  return "Não foi possível sacar. Tente novamente.";
 }

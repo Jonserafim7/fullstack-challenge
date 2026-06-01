@@ -8,6 +8,7 @@ import { fetchCurrentRound, roundHistoryQueryKey } from "./round-api";
 import { useRoundStore } from "./round-store";
 import {
   RoundEvent,
+  type BetCashedOutEvent,
   type BetConfirmedEvent,
   type BettingOpenedEvent,
   type CrashedEvent,
@@ -69,6 +70,19 @@ export function useRoundSocket(): void {
       if (bet?.betId === event.betId) {
         confirm(event.betId);
         void queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      }
+    });
+    socket.on(RoundEvent.BET_CASHED_OUT, (event: BetCashedOutEvent) => {
+      const { bet, cashOut } = useBetStore.getState();
+      // Backstop for the placer: the HTTP cash-out response normally updates the store and the
+      // balance, but if it was lost this public event still reconciles the bet to Cashed Out
+      // (idempotent). The payout credit lands asynchronously, so the balance refetches with it.
+      if (bet?.betId === event.betId) {
+        cashOut({
+          betId: event.betId,
+          cashedOutMultiplier: event.multiplierHundredths,
+          payoutCents: event.payoutCents,
+        });
       }
     });
 
