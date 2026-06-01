@@ -51,6 +51,9 @@ function buildEngine(maxRoundNumber: number): {
     bettingOpened: (event) => captured.bettingOpened.push(event),
     running: (event) => captured.running.push(event),
     crashed: (event) => captured.crashed.push(event),
+    // The engine never confirms bets (that is the debit-reply consumer's job); a no-op keeps the
+    // fake satisfying the port.
+    betConfirmed: () => {},
   };
 
   return { engine: new RoundEngine(rounds, env, publisher), captured };

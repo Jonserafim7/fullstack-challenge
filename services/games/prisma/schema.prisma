@@ -32,6 +32,35 @@ model Round {
   @@map("round")
 }
 
+// A player's wager on one Round (CONTEXT.md). The unique (round_number, player_id) enforces the
+// one-bet-per-Round rule at the database, so it holds even under two concurrent placements. The
+// stake is integer cents (ADR-0004). Username is captured at placement for the public broadcast.
+model Bet {
+  betId       String    @id @map("bet_id")
+  roundNumber Int       @map("round_number")
+  playerId    String    @map("player_id")
+  username    String
+  stake       BigInt
+  status      String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  confirmedAt DateTime? @map("confirmed_at")
+
+  @@unique([roundNumber, playerId])
+  @@index([roundNumber])
+  @@map("bet")
+}
+
+// Idempotent inbox (ADR-0001): a consumed message's deterministic key is recorded here in the
+// same transaction as its effect (marking a Bet Confirmed). The primary key makes a redelivered
+// key a no-op. Added on the games side in #14 for the debit-confirmed replies.
+model InboxMessage {
+  messageKey  String   @id @map("message_key")
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("inbox_message")
+}
+
 // Transactional outbox (ADR-0008): a message is written here in the same transaction as the
 // originating state change, then a relay drains PENDING rows to RabbitMQ and marks them PUBLISHED.
 model OutboxMessage {

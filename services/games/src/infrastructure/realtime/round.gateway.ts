@@ -4,6 +4,7 @@ import type { Server, Socket } from "socket.io";
 import {
   RoundEvent,
   RoundEventPublisher,
+  type BetConfirmedEvent,
   type BettingOpenedEvent,
   type CrashedEvent,
   type RunningEvent,
@@ -52,6 +53,10 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
 
   crashed(event: CrashedEvent): void {
     this.broadcast(RoundEvent.CRASHED, event);
+  }
+
+  betConfirmed(event: BetConfirmedEvent): void {
+    this.broadcast(RoundEvent.BET_CONFIRMED, event);
   }
 
   // Transitions emitted before the socket server is ready (during engine bootstrap) have no

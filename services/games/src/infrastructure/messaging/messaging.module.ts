@@ -1,19 +1,23 @@
 import { RabbitMQModule } from "@golevelup/nestjs-rabbitmq";
 import { Module } from "@nestjs/common";
 import { DeadLetterRoutingKey, Exchange, Queue } from "@crash/messaging";
+import { ConfirmBetUseCase } from "../../application/use-cases/confirm-bet.use-case";
 import { EnvModule } from "../env/env.module";
 import { EnvService } from "../env/env.service";
 import { DatabaseModule } from "../persistence/database.module";
+import { RealtimeModule } from "../realtime/realtime.module";
+import { GamesInboxConsumer } from "./games-inbox.consumer";
 import { OutboxRelay } from "./outbox-relay";
-import { SmokeReplyConsumer } from "./smoke-reply.consumer";
 
-// Wires games into RabbitMQ (ADR-0008): asserts the shared crash.events + crash.dlx exchanges
-// and the games dead-letter queue, runs the outbox relay, and hosts the smoke-pong consumer.
-// Each service asserts the topology it touches, so neither service must boot first.
+// Wires games into RabbitMQ (ADR-0008): asserts the shared crash.events + crash.dlx exchanges and
+// the games dead-letter queue, runs the outbox relay, and hosts the games.inbox consumer that
+// confirms bets from debit replies. Each service asserts the topology it touches, so neither
+// service must boot first.
 @Module({
   imports: [
     EnvModule,
     DatabaseModule,
+    RealtimeModule,
     RabbitMQModule.forRootAsync({
       imports: [EnvModule],
       inject: [EnvService],
@@ -40,6 +44,6 @@ import { SmokeReplyConsumer } from "./smoke-reply.consumer";
       }),
     }),
   ],
-  providers: [OutboxRelay, SmokeReplyConsumer],
+  providers: [OutboxRelay, GamesInboxConsumer, ConfirmBetUseCase],
 })
 export class MessagingModule {}
