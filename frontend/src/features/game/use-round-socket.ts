@@ -53,11 +53,9 @@ export function useRoundSocket(): void {
     });
     socket.on("disconnect", () => setConnection("disconnected"));
 
-    socket.on(RoundEvent.BETTING_OPENED, (event: BettingOpenedEvent) => {
-      applyBettingOpened(event);
-      // A fresh Round opened: drop last Round's bet so the player can place a new one.
-      useBetStore.getState().resetForRound(event.roundNumber);
-    });
+    socket.on(RoundEvent.BETTING_OPENED, (event: BettingOpenedEvent) =>
+      applyBettingOpened(event),
+    );
     socket.on(RoundEvent.RUNNING, (event: RunningEvent) => applyRunning(event));
     socket.on(RoundEvent.CRASHED, (event: CrashedEvent) => {
       applyCrashed(event);
