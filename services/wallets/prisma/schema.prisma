@@ -22,3 +22,30 @@ model Wallet {
 
   @@map("wallet")
 }
+
+// Transactional outbox (ADR-0008): a reply is written here in the same transaction as the inbox
+// dedup row, then a relay drains PENDING rows to RabbitMQ and marks them PUBLISHED.
+model OutboxMessage {
+  id          String    @id @default(cuid())
+  messageKey  String    @unique @map("message_key")
+  type        String
+  routingKey  String    @map("routing_key")
+  payload     Json
+  status      String    @default("PENDING")
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  publishedAt DateTime? @map("published_at")
+
+  @@index([status, createdAt])
+  @@map("outbox_message")
+}
+
+// Idempotent inbox (ADR-0001): a consumed message's deterministic key is recorded here in the
+// same transaction as its effect. The primary key makes a redelivered key a no-op.
+model InboxMessage {
+  messageKey  String   @id @map("message_key")
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("inbox_message")
+}
