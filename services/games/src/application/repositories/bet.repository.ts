@@ -10,4 +10,21 @@ export abstract class BetRepository {
     debitMessage: NewOutboxMessage;
   }): Promise<void>;
   abstract findById(betId: string): Promise<Bet | null>;
+
+  // The caller's bet on a given Round, used to cash out (a player has at most one bet per Round).
+  abstract findByRoundAndPlayer(args: {
+    roundNumber: number;
+    playerId: string;
+  }): Promise<Bet | null>;
+
+  // Persists the Cashed Out transition and enqueues the payout credit in ONE transaction, so a bet
+  // never becomes Cashed Out without its payout on the way (ADR-0001's no-dual-write guarantee).
+  abstract cashOut(args: {
+    bet: Bet;
+    payoutMessage: NewOutboxMessage;
+  }): Promise<void>;
+
+  // Settlement: every still-Confirmed bet on the Round crashed without cashing out, so it Loses. No
+  // money moves (debit-on-bet). Returns how many bets were marked. A single batched UPDATE.
+  abstract markConfirmedAsLost(args: { roundNumber: number }): Promise<number>;
 }

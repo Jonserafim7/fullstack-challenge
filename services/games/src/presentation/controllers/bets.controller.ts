@@ -24,7 +24,9 @@ import {
 } from "@nestjs/swagger";
 import { BetAlreadyPlacedError } from "../../application/errors/bet-already-placed.error";
 import { BettingClosedError } from "../../application/errors/betting-closed.error";
+import { CashOutUnavailableError } from "../../application/errors/cash-out-unavailable.error";
 import { InvalidStakeError } from "../../application/errors/invalid-stake.error";
+import { CashOutBetUseCase } from "../../application/use-cases/cash-out-bet.use-case";
 import { GetBetUseCase } from "../../application/use-cases/get-bet.use-case";
 import { PlaceBetUseCase } from "../../application/use-cases/place-bet.use-case";
 import {
@@ -44,6 +46,7 @@ import { BetResponseDto, toBetResponse } from "../dtos/bet-response.dto";
 export class BetsController {
   constructor(
     private readonly placeBet: PlaceBetUseCase,
+    private readonly cashOutBet: CashOutBetUseCase,
     private readonly getBet: GetBetUseCase,
   ) {}
 
@@ -82,6 +85,33 @@ export class BetsController {
         error instanceof BettingClosedError ||
         error instanceof BetAlreadyPlacedError
       ) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Post("bet/cashout")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Cash out the caller's Bet on the current Round",
+    description:
+      "Authoritative and synchronous (ADR-0001): games locks the current multiplier, marks the Bet Cashed Out, and returns it with the locked multiplier and payout. The payout credit lands in the wallet asynchronously.",
+  })
+  @ApiOkResponse({
+    type: BetResponseDto,
+    description: "Bet cashed out, with the locked multiplier and payout.",
+  })
+  @ApiConflictResponse({
+    description:
+      "The Round is not running, it has crashed, or the caller has no confirmed bet to cash out.",
+  })
+  async cashout(@CurrentPlayer() playerId: string): Promise<BetResponseDto> {
+    try {
+      const bet = await this.cashOutBet.execute({ playerId });
+      return toBetResponse(bet);
+    } catch (error) {
+      if (error instanceof CashOutUnavailableError) {
         throw new ConflictException(error.message);
       }
       throw error;

@@ -18,13 +18,36 @@ export class BetResponseDto {
 
   @ApiProperty({ description: "Stake in integer cents.", example: 500 })
   stakeCents!: number;
+
+  @ApiProperty({
+    description:
+      "Locked multiplier in integer hundredths (247 = 2.47x), set when the Bet is Cashed Out; null otherwise.",
+    example: 247,
+    nullable: true,
+  })
+  cashedOutMultiplier!: number | null;
+
+  @ApiProperty({
+    description:
+      "Payout in integer cents (stake × locked multiplier) when Cashed Out; null otherwise.",
+    example: 1235,
+    nullable: true,
+  })
+  payoutCents!: number | null;
 }
 
 export function toBetResponse(bet: Bet): BetResponseDto {
+  const cashedOutMultiplier = bet.cashedOutMultiplier;
+  const payoutCents =
+    cashedOutMultiplier !== null
+      ? Number(bet.stake.times(cashedOutMultiplier).cents)
+      : null;
   return {
     betId: bet.betId,
     roundNumber: bet.roundNumber,
     status: bet.status,
     stakeCents: Number(bet.stake.cents),
+    cashedOutMultiplier,
+    payoutCents,
   };
 }

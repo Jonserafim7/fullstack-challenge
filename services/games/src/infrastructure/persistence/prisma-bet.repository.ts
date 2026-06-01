@@ -17,6 +17,8 @@ interface BetRow {
   stake: bigint;
   status: string;
   confirmedAt: Date | null;
+  cashedOutMultiplier: number | null;
+  cashedOutAt: Date | null;
 }
 
 @Injectable()
@@ -49,6 +51,51 @@ export class PrismaBetRepository implements BetRepository {
     const row = await this.prisma.bet.findUnique({ where: { betId } });
     return row ? toDomain(row) : null;
   }
+
+  async findByRoundAndPlayer({
+    roundNumber,
+    playerId,
+  }: {
+    roundNumber: number;
+    playerId: string;
+  }): Promise<Bet | null> {
+    const row = await this.prisma.bet.findUnique({
+      where: { roundNumber_playerId: { roundNumber, playerId } },
+    });
+    return row ? toDomain(row) : null;
+  }
+
+  async cashOut({
+    bet,
+    payoutMessage,
+  }: {
+    bet: Bet;
+    payoutMessage: NewOutboxMessage;
+  }): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bet.update({
+        where: { betId: bet.betId },
+        data: {
+          status: bet.status,
+          cashedOutMultiplier: bet.cashedOutMultiplier,
+          cashedOutAt: bet.cashedOutAt,
+        },
+      });
+      await tx.outboxMessage.create({ data: toOutboxData(payoutMessage) });
+    });
+  }
+
+  async markConfirmedAsLost({
+    roundNumber,
+  }: {
+    roundNumber: number;
+  }): Promise<number> {
+    const { count } = await this.prisma.bet.updateMany({
+      where: { roundNumber, status: BetStatus.CONFIRMED },
+      data: { status: BetStatus.LOST },
+    });
+    return count;
+  }
 }
 
 function toDomain(row: BetRow): Bet {
@@ -60,6 +107,8 @@ function toDomain(row: BetRow): Bet {
     stake: Money.fromCents(row.stake),
     status: row.status as BetStatus,
     confirmedAt: row.confirmedAt,
+    cashedOutMultiplier: row.cashedOutMultiplier,
+    cashedOutAt: row.cashedOutAt,
   });
 }
 

@@ -14,6 +14,7 @@ import {
 import { EnvService } from "../infrastructure/env/env.service";
 import { RoundEventPublisher } from "./realtime/round-event-publisher";
 import { RoundRepository } from "./repositories/round.repository";
+import { SettleRoundUseCase } from "./use-cases/settle-round.use-case";
 
 const ONE_X_HUNDREDTHS = 100;
 
@@ -34,6 +35,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     private readonly rounds: RoundRepository,
     private readonly env: EnvService,
     private readonly publisher: RoundEventPublisher,
+    private readonly settleRound: SettleRoundUseCase,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -136,6 +138,16 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
         houseEdge: round.houseEdge,
       },
     });
+    // The phase is now CRASHED, so no further cash out can succeed; every still-Confirmed bet Lost.
+    // Isolated in its own try/catch: a settlement failure must not stop the round chain below.
+    try {
+      await this.settleRound.execute({ roundNumber: round.roundNumber });
+    } catch (error) {
+      this.logger.error(
+        `Failed to settle round ${round.roundNumber}`,
+        error as Error,
+      );
+    }
     this.scheduleAfter(this.env.get("CRASHED_DISPLAY_MS"), () =>
       this.settleAndContinue(round),
     );

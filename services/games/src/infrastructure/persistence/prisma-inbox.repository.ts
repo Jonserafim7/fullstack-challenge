@@ -16,6 +16,8 @@ interface BetRow {
   stake: bigint;
   status: string;
   confirmedAt: Date | null;
+  cashedOutMultiplier: number | null;
+  cashedOutAt: Date | null;
 }
 
 @Injectable()
@@ -71,6 +73,8 @@ function toDomain(row: BetRow): Bet {
     stake: Money.fromCents(row.stake),
     status: row.status as BetStatus,
     confirmedAt: row.confirmedAt,
+    cashedOutMultiplier: row.cashedOutMultiplier,
+    cashedOutAt: row.cashedOutAt,
   });
 }
 
