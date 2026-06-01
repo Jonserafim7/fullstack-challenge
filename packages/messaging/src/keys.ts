@@ -25,3 +25,16 @@ export function debitConfirmedKey(betId: string): string {
 export function payoutKey(betId: string): string {
   return `payout:${betId}`;
 }
+
+// The rejection reply's key: games dedups on it so a redelivered rejection marks the Bet Rejected
+// once. One rejection per refused debit (#7).
+export function debitRejectedKey(betId: string): string {
+  return `debit-rejected:${betId}`;
+}
+
+// The refund credit's key: wallets dedups on it so a redelivered refund credits the wallet once,
+// and games' outbox dedups on it so a Voided bet's late confirmation enqueues the refund once
+// (ADR-0001). One refund per Voided bet whose debit landed late (#7).
+export function refundKey(betId: string): string {
+  return `refund:${betId}`;
+}
