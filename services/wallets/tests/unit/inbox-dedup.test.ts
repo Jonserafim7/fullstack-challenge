@@ -77,7 +77,7 @@ describe("ProcessInboundMessage (inbox dedup)", () => {
       recordAndEnqueue: async (): Promise<void> => {
         throw new Error("database unreachable");
       },
-    } as InboxStore;
+    } as unknown as InboxStore;
     const useCase = new ProcessInboundMessageUseCase(failingInbox);
 
     await expect(useCase.handle(smokePing("abc"))).rejects.toThrow(
