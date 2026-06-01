@@ -134,6 +134,26 @@ describe("CashOutBet", () => {
     });
   });
 
+  test("never locks below 1.00x when the elapsed time is non-positive", async () => {
+    // startedAt one second in the future (a backward clock skew): the floor is 1.00x, paying the
+    // stake back — a cash out must never return less than the wager.
+    const round = runningRound({
+      startedAtMsAgo: -1_000,
+      crashPointHundredths: 1_000,
+    });
+    const bet = confirmedBet();
+    const { bets } = fakeBets(bet);
+    const { publisher } = fakePublisher();
+    const useCase = new CashOutBetUseCase(fakeRounds(round), bets, publisher);
+
+    const result = await useCase.execute({ playerId: PLAYER_ID });
+
+    expect(result.cashedOutMultiplier).toBe(100);
+    expect(Number(result.stake.times(result.cashedOutMultiplier!).cents)).toBe(
+      STAKE_CENTS,
+    );
+  });
+
   test("rejects a cash out when the Round is not running", async () => {
     const betting = Round.open({
       roundNumber: 42,
