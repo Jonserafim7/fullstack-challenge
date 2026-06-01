@@ -10,18 +10,23 @@ export const Exchange = {
 export type Exchange = (typeof Exchange)[keyof typeof Exchange];
 
 export const Queue = {
-  // wallets consumes commands it must act on (the smoke ping now; debit/payout/refund in #14).
+  // wallets consumes commands it must act on (debit, payout, refund) plus the smoke ping.
   WALLETS_INBOX: "wallets.inbox",
-  // games consumes replies (the smoke pong now; debit-confirmed/rejected in #14).
+  // games consumes replies (debit-confirmed, debit-rejected) plus the smoke pong.
   GAMES_INBOX: "games.inbox",
   WALLETS_DLQ: "wallets.dlq",
   GAMES_DLQ: "games.dlq",
+  // Delay queues for backoff retries (#7): a transient-failure message is parked here with a
+  // per-message TTL, then dead-letters back to the owning inbox once the delay elapses. Never
+  // consumed — messages only wait and expire.
+  WALLETS_RETRY: "wallets.retry",
+  GAMES_RETRY: "games.retry",
 } as const;
 export type Queue = (typeof Queue)[keyof typeof Queue];
 
-// Routing keys are hierarchical so the exchange can fan future money movements to the right
-// queue without re-topology. The smoke pair proves the rails (#6); the bet saga (#14) adds the
-// debit command (games -> wallets) and its confirmation reply (wallets -> games).
+// Routing keys are hierarchical so the exchange can fan money movements to the right queue without
+// re-topology. The smoke pair proves the rails (#6); the bet saga (#14) added the debit command and
+// its confirmation reply; #8 added the payout; #7 adds the rejection reply and the refund command.
 export const RoutingKey = {
   SMOKE_PING: "smoke.ping",
   SMOKE_PONG: "smoke.pong",
@@ -29,11 +34,33 @@ export const RoutingKey = {
   WALLET_DEBIT: "wallet.debit",
   // Reply: wallets confirms the stake left the wallet. Lands on games.inbox.
   BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
+  // Reply: wallets refused the debit (insufficient funds), so games marks the Bet Rejected and
+  // tells only its owner. Lands on games.inbox (#7, ADR-0001).
+  BET_DEBIT_REJECTED: "bet.debit-rejected",
   // Command: games tells wallets to credit a cashed-out bet's payout. Lands on wallets.inbox.
   // Fire-and-forget — the credit is unconditional, so there is no reply (#8, ADR-0001).
   WALLET_PAYOUT: "wallet.payout",
+  // Command: games tells wallets to refund a Voided bet whose debit landed late. Like the payout it
+  // is an unconditional credit with no reply, deduped on `refund:{betId}` (#7, ADR-0001).
+  WALLET_REFUND: "wallet.refund",
+  // Backoff plumbing (#7): a consumer republishes a transiently-failed message under `retry.<svc>`
+  // to park it in that service's delay queue; when the TTL elapses the queue dead-letters it back
+  // to the inbox under `redeliver.<svc>` (the inbox dispatches by envelope type, so one redeliver
+  // key per service is enough — the original routing key need not be preserved).
+  RETRY_WALLETS: "retry.wallets",
+  RETRY_GAMES: "retry.games",
+  REDELIVER_WALLETS: "redeliver.wallets",
+  REDELIVER_GAMES: "redeliver.games",
 } as const;
 export type RoutingKey = (typeof RoutingKey)[keyof typeof RoutingKey];
+
+// The unconditional credits (ADR-0001): payout and refund are never abandoned, so the outbox relay
+// exempts them from the give-up-after-N cap. Kept here so producer and relay agree on the set
+// instead of accreting `OR routingKey = ...` clauses as new credit types appear.
+export const CREDIT_ROUTING_KEYS: readonly RoutingKey[] = [
+  RoutingKey.WALLET_PAYOUT,
+  RoutingKey.WALLET_REFUND,
+];
 
 // Message types travel in the envelope and mirror the routing key they ship under.
 export const MessageType = {
@@ -41,7 +68,9 @@ export const MessageType = {
   SMOKE_PONG: "smoke.pong",
   WALLET_DEBIT: "wallet.debit",
   BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
+  BET_DEBIT_REJECTED: "bet.debit-rejected",
   WALLET_PAYOUT: "wallet.payout",
+  WALLET_REFUND: "wallet.refund",
 } as const;
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 
