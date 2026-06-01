@@ -4,7 +4,9 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  server: { port: 3000 },
+  // fs.allow lets the dev server read the sibling @crash/crash-curve source above
+  // the project root; tsconfigPaths resolves the import the same way tsc/ESLint do.
+  server: { port: 3000, fs: { allow: [".."] } },
   resolve: { tsconfigPaths: true },
   plugins: [
     tailwindcss(),

@@ -165,8 +165,8 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         VITE_OIDC_AUTHORITY: http://localhost:8080/realms/crash-game
         VITE_OIDC_CLIENT_ID: crash-game-client
