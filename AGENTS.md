@@ -47,6 +47,8 @@ Frontend ──HTTP/REST + WebSocket──> Kong (:8000) ──> games (:4001) /
 - **games service** — round lifecycle, bets, crash logic, provably-fair, WebSocket push. WebSocket is **server→client only**; all player actions (bet, cashout) go through REST.
 - **wallets service** — player balance, credit/debit. Credit/debit are **not** REST endpoints; they happen via the message broker.
 
+The async link uses a **transactional outbox** in both services and an **idempotent inbox** in wallets, drained to RabbitMQ by a polling relay over the `crash.events` topic exchange (dead-lettering to `crash.dlx`). The wire contract (envelope, topology, idempotency keys) is the shared `@crash/messaging` package; the saga design is [ADR-0001](./docs/adr/0001-async-games-wallets-integration.md) and the implementation is [ADR-0008](./docs/adr/0008-messaging-implementation.md).
+
 ### Service internals (DDD layering)
 
 Each service follows strict DDD layer separation; preserve it when adding code:
