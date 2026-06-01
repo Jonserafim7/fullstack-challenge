@@ -20,19 +20,22 @@ export class PrismaInboxRepository implements InboxStore {
     type: string;
     outbox: NewOutboxMessage[];
   }): Promise<void> {
-    try {
-      await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
+      // The dedup is the inbox primary key alone. Scope the duplicate check to this insert so a
+      // unique-constraint failure on an outbox row (a real anomaly) propagates instead of being
+      // mistaken for a redelivery and silently swallowed.
+      try {
         await tx.inboxMessage.create({ data: { messageKey, type } });
-        for (const message of outbox) {
-          await tx.outboxMessage.create({ data: toCreateData(message) });
+      } catch (error) {
+        if (isDuplicateKey(error)) {
+          throw new DuplicateMessageError(messageKey);
         }
-      });
-    } catch (error) {
-      if (isDuplicateKey(error)) {
-        throw new DuplicateMessageError(messageKey);
+        throw error;
       }
-      throw error;
-    }
+      for (const message of outbox) {
+        await tx.outboxMessage.create({ data: toCreateData(message) });
+      }
+    });
   }
 }
 
