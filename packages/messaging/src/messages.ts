@@ -19,3 +19,13 @@ export interface DebitCommandPayload {
 export interface DebitConfirmedPayload {
   betId: string;
 }
+
+// Command payload for `wallet.payout` (games -> wallets): credit this cashed-out bet's payout to the
+// player's wallet. betId is the unit of idempotency (key `payout:{betId}`); amountCents is integer
+// cents (ADR-0004) = stake × locked multiplier, computed authoritatively by games. The credit is
+// unconditional — there is no reply.
+export interface PayoutCommandPayload {
+  betId: string;
+  playerId: string;
+  amountCents: number;
+}

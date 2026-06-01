@@ -19,3 +19,9 @@ export function debitKey(betId: string): string {
 export function debitConfirmedKey(betId: string): string {
   return `debit-confirmed:${betId}`;
 }
+
+// The payout credit's key: wallets dedups on it so a redelivered payout credits the wallet once
+// (ADR-0001 — exactly-once over at-least-once). One payout per cashed-out bet.
+export function payoutKey(betId: string): string {
+  return `payout:${betId}`;
+}
