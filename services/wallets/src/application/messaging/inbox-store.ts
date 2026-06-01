@@ -23,4 +23,15 @@ export abstract class InboxStore {
     stakeCents: number;
     reply: NewOutboxMessage;
   }): Promise<void>;
+
+  // Records the inbound message key and credits the player's wallet in one transaction. Credits are
+  // unconditional (ADR-0001) — no balance guard, no reply, they cannot fail on a business rule, only
+  // delay. Throws DuplicateMessageError on a redelivery (nothing applied), WalletNotFoundError if the
+  // player has no wallet.
+  abstract recordCredit(args: {
+    messageKey: string;
+    type: string;
+    playerId: string;
+    amountCents: number;
+  }): Promise<void>;
 }
