@@ -1,4 +1,8 @@
 **/node_modules
 **/dist
+**/.env
+**/.output
+**/.nitro
+**/.tanstack
 .git
 .scratch

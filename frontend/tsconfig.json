@@ -11,7 +11,10 @@
     "strictNullChecks": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": ["./src/*"],
+      "@crash/crash-curve": ["../packages/crash-curve/src/index.ts"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }
