@@ -1,37 +1,12 @@
 import { create } from "zustand";
-import { RoundPhase, type RoundSnapshot } from "@/queries/round";
-
-// The server->client phase events (ADR-0003); mirrors the games gateway's RoundEvent names.
-export const RoundEvent = {
-  BETTING_OPENED: "round.betting_opened",
-  RUNNING: "round.running",
-  CRASHED: "round.crashed",
-} as const;
-
-export interface BettingOpenedEvent {
-  roundNumber: number;
-  seedHash: string;
-  bettingEndsAt: string;
-}
-
-export interface RunningEvent {
-  roundNumber: number;
-  startedAt: string;
-}
-
-export interface CrashVerification {
-  serverSeed: string;
-  previousSeed: string;
-  clientSeed: string;
-  houseEdge: number;
-}
-
-export interface CrashedEvent {
-  roundNumber: number;
-  crashPoint: number;
-  crashedAt: string;
-  verification: CrashVerification;
-}
+import {
+  RoundPhase,
+  type RoundSnapshot,
+  type BettingOpenedEvent,
+  type RunningEvent,
+  type CrashedEvent,
+  type CrashVerification,
+} from "./round-contracts";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 

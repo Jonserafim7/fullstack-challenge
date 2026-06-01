@@ -1,4 +1,4 @@
-import { useRoundHistoryQuery } from "@/queries/round";
+import { useRoundHistoryQuery } from "../round-api";
 import { formatMultiplier } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { auth } from "@/auth/auth";
+import { auth } from "@/lib/auth/auth";
 
 export const Route = createFileRoute("/auth/callback")({
   component: CallbackPage,

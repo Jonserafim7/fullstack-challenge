@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { elapsedMsToReach, multiplierAt } from "@crash/crash-curve";
-import { RoundPhase } from "@/queries/round";
+import { RoundPhase } from "../round-contracts";
 import { formatMultiplier } from "@/lib/format";
-import { useRoundStore } from "./round-store";
+import { useRoundStore } from "../round-store";
 
 // The rising multiplier is drawn off React state (ADR-0006): a requestAnimationFrame loop
 // reads the live store via getState() and paints the curve, so the 60fps redraw never

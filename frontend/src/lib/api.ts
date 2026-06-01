@@ -1,5 +1,5 @@
 import axios from "axios";
-import { auth } from "@/auth/auth";
+import { auth } from "@/lib/auth/auth";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,

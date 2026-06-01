@@ -1,5 +1,5 @@
 import type { User } from "oidc-client-ts";
-import { getUserManager } from "./userManager";
+import { getUserManager } from "./user-manager";
 
 let currentUser: User | null = null;
 let initialization: Promise<void> | null = null;
