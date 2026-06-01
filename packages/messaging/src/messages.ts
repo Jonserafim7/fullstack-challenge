@@ -4,3 +4,18 @@
 export interface SmokePayload {
   correlationId: string;
 }
+
+// Command payload for `wallet.debit` (games -> wallets): debit this bet's stake from the player's
+// wallet. The betId is the unit of idempotency (key `debit:{betId}`); stakeCents is integer cents
+// (ADR-0004 — money is never a float). wallets knows nothing of rounds or usernames.
+export interface DebitCommandPayload {
+  betId: string;
+  playerId: string;
+  stakeCents: number;
+}
+
+// Reply payload for `bet.debit-confirmed` (wallets -> games): the stake left the wallet, so games
+// can mark the Bet Confirmed. Keyed `debit-confirmed:{betId}` for the games-side inbox dedup.
+export interface DebitConfirmedPayload {
+  betId: string;
+}
