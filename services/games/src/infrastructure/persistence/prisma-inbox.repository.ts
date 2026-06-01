@@ -9,6 +9,7 @@ import {
 } from "../../application/messaging/inbox-store";
 import { NewOutboxMessage } from "../../application/messaging/outbox-store";
 import { Bet, BetStatus } from "../../domain/entities/bet";
+import { RoundPhase } from "../../domain/entities/round";
 import { PrismaService } from "./prisma.service";
 
 const UNIQUE_CONSTRAINT_VIOLATION = "P2002";
@@ -49,20 +50,34 @@ export class PrismaInboxRepository implements InboxStore {
       }
       const bet = toDomain(row);
 
-      // The Pending -> Confirmed rule stays in the domain.
+      // A Pending bet confirms only while its Round is still Betting. If the Round has already left
+      // Betting, this bet was still Pending past the deadline — round start is the deadline
+      // (ADR-0001) — and it slipped past the batch void at startRunning (its placement committed
+      // after that sweep, the narrow race the sweep cannot cover alone). Void it now; the VOIDED
+      // branch below then refunds the stake the wallet debited, exactly as the eager void path
+      // would have. This makes the confirmation the authoritative deadline check, not the sweep's
+      // timing. The Pending -> Confirmed / Voided rules stay in the domain.
       if (bet.status === BetStatus.PENDING) {
-        bet.confirm({ confirmedAt: new Date() });
-        await tx.bet.update({
-          where: { betId },
-          data: { status: bet.status, confirmedAt: bet.confirmedAt },
+        const round = await tx.round.findUnique({
+          where: { roundNumber: bet.roundNumber },
+          select: { phase: true },
         });
-        return { kind: "confirmed", bet };
+        if (round?.phase === RoundPhase.BETTING) {
+          bet.confirm({ confirmedAt: new Date() });
+          await tx.bet.update({
+            where: { betId },
+            data: { status: bet.status, confirmedAt: bet.confirmedAt },
+          });
+          return { kind: "confirmed", bet };
+        }
+        bet.void();
+        await tx.bet.update({ where: { betId }, data: { status: bet.status } });
       }
 
-      // The Bet was Voided (its betting window closed before this debit landed), yet the stake left
-      // the wallet — so compensate with a Refund (ADR-0001). Enqueued in this same transaction as
-      // the dedup key, so the refund and the key commit together; the refund's `refund:{betId}` key
-      // makes a redelivery a no-op on both ends.
+      // The Bet is Voided (its betting window closed before this debit landed — swept at round
+      // start or voided just above), yet the stake left the wallet — so compensate with a Refund
+      // (ADR-0001). Enqueued in this same transaction as the dedup key, so the refund and the key
+      // commit together; the refund's `refund:{betId}` key makes a redelivery a no-op on both ends.
       if (bet.status === BetStatus.VOIDED) {
         const refund = buildRefund({
           betId: bet.betId,
