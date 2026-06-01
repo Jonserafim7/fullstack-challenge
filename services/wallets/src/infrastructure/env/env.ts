@@ -7,6 +7,10 @@ export const envSchema = z.object({
   // times is left for inspection (ADR-0001, ADR-0008).
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(500),
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
+  // Inbox retry backoff before the DLQ (#7, ADR-0001): a transiently-failed message is retried with
+  // an exponentially growing delay (base × 2^attempt) and dead-lettered after this many attempts.
+  INBOX_RETRY_BASE_MS: z.coerce.number().int().positive().default(1000),
+  INBOX_RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   KEYCLOAK_ISSUER: z.string().url(),
   KEYCLOAK_JWKS_URI: z.string().url(),
   TEST_PLAYER_ID: z.string().uuid().optional(),

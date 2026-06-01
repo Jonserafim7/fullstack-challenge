@@ -12,16 +12,20 @@ export abstract class InboxStore {
     outbox: NewOutboxMessage[];
   }): Promise<void>;
 
-  // Records the inbound message key, debits the player's wallet, and enqueues the reply — all in
-  // one transaction, so the balance delta and the dedup key commit together (the exactly-once
-  // money guarantee of ADR-0001). Throws DuplicateMessageError on a redelivery (nothing applied),
-  // WalletNotFoundError if the player has no wallet, InsufficientBalanceError if funds fall short.
+  // Records the inbound message key, attempts to debit the player's wallet, and enqueues exactly one
+  // reply — all in one transaction, so the balance delta (if any), the dedup key, and the reply
+  // commit together (the exactly-once money guarantee of ADR-0001). On sufficient funds it debits
+  // and enqueues `confirmReply`; on insufficient funds it moves no money and enqueues `rejectReply`
+  // — insufficient funds is a committed business outcome, not an error (#7). Throws
+  // DuplicateMessageError on a redelivery (nothing applied), WalletNotFoundError if the player has
+  // no wallet (a genuine anomaly, left to retry/DLQ).
   abstract recordDebit(args: {
     messageKey: string;
     type: string;
     playerId: string;
     stakeCents: number;
-    reply: NewOutboxMessage;
+    confirmReply: NewOutboxMessage;
+    rejectReply: NewOutboxMessage;
   }): Promise<void>;
 
   // Records the inbound message key and credits the player's wallet in one transaction. Credits are

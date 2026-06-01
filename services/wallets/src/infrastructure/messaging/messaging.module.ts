@@ -1,6 +1,11 @@
 import { RabbitMQModule } from "@golevelup/nestjs-rabbitmq";
 import { Module } from "@nestjs/common";
-import { DeadLetterRoutingKey, Exchange, Queue } from "@crash/messaging";
+import {
+  DeadLetterRoutingKey,
+  Exchange,
+  Queue,
+  RoutingKey,
+} from "@crash/messaging";
 import { CreditWalletUseCase } from "../../application/use-cases/credit-wallet.use-case";
 import { DebitWalletUseCase } from "../../application/use-cases/debit-wallet.use-case";
 import { ProcessInboundMessageUseCase } from "../../application/use-cases/process-inbound-message.use-case";
@@ -36,6 +41,21 @@ import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
             exchange: Exchange.DEAD_LETTER,
             routingKey: DeadLetterRoutingKey.WALLETS,
             options: { durable: true },
+          },
+          // Delay queue for backoff retries (#7): a transiently-failed message is parked here under
+          // `retry.wallets` with a per-message TTL; when it expires the queue dead-letters it back to
+          // crash.events under `redeliver.wallets`, which wallets.inbox also binds. Never consumed.
+          {
+            name: Queue.WALLETS_RETRY,
+            exchange: Exchange.EVENTS,
+            routingKey: RoutingKey.RETRY_WALLETS,
+            options: {
+              durable: true,
+              arguments: {
+                "x-dead-letter-exchange": Exchange.EVENTS,
+                "x-dead-letter-routing-key": RoutingKey.REDELIVER_WALLETS,
+              },
+            },
           },
         ],
         defaultPublishOptions: { persistent: true },
