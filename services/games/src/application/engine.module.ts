@@ -4,9 +4,10 @@ import { EnvModule } from "../infrastructure/env/env.module";
 import { RealtimeModule } from "../infrastructure/realtime/realtime.module";
 import { RoundEngine } from "./round-engine";
 import { SettleRoundUseCase } from "./use-cases/settle-round.use-case";
+import { VoidPendingBetsUseCase } from "./use-cases/void-pending-bets.use-case";
 
 @Module({
   imports: [EnvModule, DatabaseModule, RealtimeModule],
-  providers: [RoundEngine, SettleRoundUseCase],
+  providers: [RoundEngine, SettleRoundUseCase, VoidPendingBetsUseCase],
 })
 export class EngineModule {}

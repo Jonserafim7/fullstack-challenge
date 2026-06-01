@@ -9,6 +9,10 @@ export const envSchema = z.object({
   RABBITMQ_URL: z.string().url(),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(500),
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
+  // Inbox retry backoff before the DLQ (#7, ADR-0001): a transiently-failed message is retried with
+  // an exponentially growing delay (base × 2^attempt) and dead-lettered after this many attempts.
+  INBOX_RETRY_BASE_MS: z.coerce.number().int().positive().default(1000),
+  INBOX_RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 
   // Auth: validate the token issuer, fetch signing keys from the IdP. The games
   // WebSocket gateway validates the JWT on connect (ADR-0003).

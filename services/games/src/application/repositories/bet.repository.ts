@@ -27,4 +27,8 @@ export abstract class BetRepository {
   // Settlement: every still-Confirmed bet on the Round crashed without cashing out, so it Loses. No
   // money moves (debit-on-bet). Returns how many bets were marked. A single batched UPDATE.
   abstract markConfirmedAsLost(args: { roundNumber: number }): Promise<number>;
+
+  // Round start: every still-Pending bet missed the betting window, so it is Voided. No money moves
+  // (a late debit is compensated by a Refund). Returns how many bets were marked. A batched UPDATE.
+  abstract markPendingAsVoided(args: { roundNumber: number }): Promise<number>;
 }

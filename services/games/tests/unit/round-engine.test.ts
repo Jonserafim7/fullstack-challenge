@@ -8,6 +8,7 @@ import type {
 } from "../../src/application/realtime/round-event-publisher";
 import type { RoundRepository } from "../../src/application/repositories/round.repository";
 import type { SettleRoundUseCase } from "../../src/application/use-cases/settle-round.use-case";
+import type { VoidPendingBetsUseCase } from "../../src/application/use-cases/void-pending-bets.use-case";
 import type { EnvService } from "../../src/infrastructure/env/env.service";
 import { createHashChain } from "../../src/domain/provably-fair";
 
@@ -52,10 +53,11 @@ function buildEngine(maxRoundNumber: number): {
     bettingOpened: (event) => captured.bettingOpened.push(event),
     running: (event) => captured.running.push(event),
     crashed: (event) => captured.crashed.push(event),
-    // The engine never confirms or cashes out bets (those are the consumer's and the HTTP
+    // The engine never confirms, cashes out, or rejects bets (those are the consumer's and the HTTP
     // use-case's jobs); no-ops keep the fake satisfying the port.
     betConfirmed: () => {},
     betCashedOut: () => {},
+    betRejected: () => {},
   };
 
   // The crash timer is pushed far out, so settlement never runs here; a no-op fake suffices.
@@ -63,8 +65,19 @@ function buildEngine(maxRoundNumber: number): {
     execute: async () => {},
   } as unknown as SettleRoundUseCase;
 
+  // The betting timer is pushed far out, so the void at round start never runs here either.
+  const voidPendingBets = {
+    execute: async () => {},
+  } as unknown as VoidPendingBetsUseCase;
+
   return {
-    engine: new RoundEngine(rounds, env, publisher, settleRound),
+    engine: new RoundEngine(
+      rounds,
+      env,
+      publisher,
+      settleRound,
+      voidPendingBets,
+    ),
     captured,
   };
 }

@@ -6,18 +6,19 @@ import {
   RoundEventPublisher,
   type BetCashedOutEvent,
   type BetConfirmedEvent,
+  type BetRejectedEvent,
   type BettingOpenedEvent,
   type CrashedEvent,
   type RunningEvent,
 } from "../../application/realtime/round-event-publisher";
 import { JwtVerifier } from "../auth/jwt-verifier";
 
-// Server -> client only (ADR-0003): broadcasts Round phase transitions to every connected
-// client. The JWT is validated in connection middleware, so an unauthenticated socket is
-// rejected before it joins the broadcast set — no event can race the rejection. Watching is
-// public, so there are no per-player channels yet (owner-only delivery arrives with betting in
-// #6/#7). The websocket-only transport lets the upgrade pass cleanly through Kong without the
-// polling handshake.
+// Server -> client only (ADR-0003): broadcasts Round phase transitions to every connected client,
+// and delivers owner-only events (a private bet.rejected) to a per-player room. The JWT is
+// validated in connection middleware, which also joins the socket to a room named after its
+// playerId, so an unauthenticated socket is rejected before it joins anything — no event can race
+// the rejection. The websocket-only transport lets the upgrade pass cleanly through Kong without
+// the polling handshake.
 @WebSocketGateway({ transports: ["websocket"] })
 export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
   private readonly logger = new Logger(RoundGateway.name);
@@ -41,7 +42,11 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     if (!token) {
       throw new Error("Missing token");
     }
-    socket.data.playerId = await this.jwt.verify(token);
+    const playerId = await this.jwt.verify(token);
+    socket.data.playerId = playerId;
+    // Join a room named after the player so owner-only events reach every tab this player has open,
+    // and no one else (#7). Public broadcasts still go to all sockets via server.emit.
+    await socket.join(playerId);
   }
 
   bettingOpened(event: BettingOpenedEvent): void {
@@ -64,6 +69,10 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     this.broadcast(RoundEvent.BET_CASHED_OUT, event);
   }
 
+  betRejected(event: BetRejectedEvent): void {
+    this.emitToPlayer(event.playerId, RoundEvent.BET_REJECTED, event);
+  }
+
   // Transitions emitted before the socket server is ready (during engine bootstrap) have no
   // possible subscribers, so dropping them is safe — late joiners hydrate via REST.
   private broadcast(event: string, payload: object): void {
@@ -72,6 +81,17 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
       return;
     }
     this.server.emit(event, payload);
+  }
+
+  // Owner-only delivery: emits to the room the player's sockets joined at the handshake (#7).
+  private emitToPlayer(playerId: string, event: string, payload: object): void {
+    if (!this.server) {
+      this.logger.warn(
+        `Dropped ${event} for ${playerId}: socket server not ready`,
+      );
+      return;
+    }
+    this.server.to(playerId).emit(event, payload);
   }
 }
 

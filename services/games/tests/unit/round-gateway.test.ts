@@ -5,6 +5,8 @@ import type { JwtVerifier } from "../../src/infrastructure/auth/jwt-verifier";
 interface EmittedEvent {
   event: string;
   payload: unknown;
+  // The room a private emit targeted, or undefined for a broadcast (server.emit).
+  room?: string;
 }
 
 function buildGateway(jwt: JwtVerifier): {
@@ -15,15 +17,24 @@ function buildGateway(jwt: JwtVerifier): {
   const gateway = new RoundGateway(jwt);
   gateway.afterInit({
     emit: (event: string, payload: unknown) => emitted.push({ event, payload }),
+    to: (room: string) => ({
+      emit: (event: string, payload: unknown) =>
+        emitted.push({ event, payload, room }),
+    }),
     use: () => {},
   } as never);
   return { gateway, emitted };
 }
 
 function fakeSocket(token?: string) {
+  const joined: string[] = [];
   return {
     handshake: { auth: token === undefined ? {} : { token } },
     data: {} as Record<string, unknown>,
+    join: (room: string) => {
+      joined.push(room);
+    },
+    joined,
   };
 }
 
@@ -76,6 +87,25 @@ describe("RoundGateway broadcasts", () => {
       gateway.running({ roundNumber: 1, startedAt: "s" }),
     ).not.toThrow();
   });
+
+  test("delivers a rejection only to the owning player's room", () => {
+    const { gateway, emitted } = buildGateway(acceptingJwt);
+
+    gateway.betRejected({
+      betId: "bet-1",
+      roundNumber: 7,
+      playerId: "player-9",
+      reason: "INSUFFICIENT_BALANCE",
+    });
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].event).toBe("bet.rejected");
+    expect(emitted[0].room).toBe("player-9");
+    expect(emitted[0].payload).toMatchObject({
+      betId: "bet-1",
+      reason: "INSUFFICIENT_BALANCE",
+    });
+  });
 });
 
 describe("RoundGateway JWT authentication", () => {
@@ -95,12 +125,13 @@ describe("RoundGateway JWT authentication", () => {
     expect(socket.data.playerId).toBeUndefined();
   });
 
-  test("accepts a valid token and records the player id", async () => {
+  test("accepts a valid token, records the player id, and joins their room", async () => {
     const { gateway } = buildGateway(acceptingJwt);
     const socket = fakeSocket("good-token");
 
     await gateway.authenticate(socket as never);
 
     expect(socket.data.playerId).toBe("player-sub");
+    expect(socket.joined).toContain("player-sub");
   });
 });

@@ -96,6 +96,18 @@ export class PrismaBetRepository implements BetRepository {
     });
     return count;
   }
+
+  async markPendingAsVoided({
+    roundNumber,
+  }: {
+    roundNumber: number;
+  }): Promise<number> {
+    const { count } = await this.prisma.bet.updateMany({
+      where: { roundNumber, status: BetStatus.PENDING },
+      data: { status: BetStatus.VOIDED },
+    });
+    return count;
+  }
 }
 
 function toDomain(row: BetRow): Bet {
