@@ -15,6 +15,7 @@ import { EnvService } from "../infrastructure/env/env.service";
 import { RoundEventPublisher } from "./realtime/round-event-publisher";
 import { RoundRepository } from "./repositories/round.repository";
 import { SettleRoundUseCase } from "./use-cases/settle-round.use-case";
+import { VoidPendingBetsUseCase } from "./use-cases/void-pending-bets.use-case";
 
 const ONE_X_HUNDREDTHS = 100;
 
@@ -36,6 +37,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     private readonly env: EnvService,
     private readonly publisher: RoundEventPublisher,
     private readonly settleRound: SettleRoundUseCase,
+    private readonly voidPendingBets: VoidPendingBetsUseCase,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -118,6 +120,17 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
       roundNumber: round.roundNumber,
       startedAt: round.startedAt!.toISOString(),
     });
+    // Betting just closed: any Bet still Pending missed the window and is Voided. Isolated in its
+    // own try/catch — a void failure must not stop the round chain below (a late debit will still be
+    // compensated by a Refund when it lands).
+    try {
+      await this.voidPendingBets.execute({ roundNumber: round.roundNumber });
+    } catch (error) {
+      this.logger.error(
+        `Failed to void pending bets for round ${round.roundNumber}`,
+        error as Error,
+      );
+    }
     const runningMs = elapsedMsToReach({
       multiplier: round.crashPointHundredths / ONE_X_HUNDREDTHS,
     });

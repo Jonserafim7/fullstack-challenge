@@ -10,6 +10,9 @@ export const RoundEvent = {
   // A player cashed out: the Bet locked its multiplier and won (#8). Public, so every client sees
   // who escaped before the crash; the placing client matches betId to reconcile its own Bet.
   BET_CASHED_OUT: "bet.cashed_out",
+  // A Bet was Rejected (the Wallet refused the debit). Private, delivered only to the owning player
+  // — a refused debit reveals the player's funds, so it must not broadcast (#7, ADR-0003).
+  BET_REJECTED: "bet.rejected",
 } as const;
 
 export interface BettingOpenedEvent {
@@ -60,6 +63,16 @@ export interface BetCashedOutEvent {
   payoutCents: number;
 }
 
+// Delivered only to the owning player (#7). Carries the playerId so the gateway can address that
+// player's room, and the reason so the client can explain the refusal; betId lets the placer
+// reconcile its own pending Bet. Never broadcast — it would leak the player's funds to everyone.
+export interface BetRejectedEvent {
+  betId: string;
+  roundNumber: number;
+  playerId: string;
+  reason: string;
+}
+
 // The port the use-cases depend on to push server->client events, keeping them decoupled from the
 // WebSocket transport (mirrors the RoundRepository port). The gateway implements it.
 export abstract class RoundEventPublisher {
@@ -68,4 +81,5 @@ export abstract class RoundEventPublisher {
   abstract crashed(event: CrashedEvent): void;
   abstract betConfirmed(event: BetConfirmedEvent): void;
   abstract betCashedOut(event: BetCashedOutEvent): void;
+  abstract betRejected(event: BetRejectedEvent): void;
 }
