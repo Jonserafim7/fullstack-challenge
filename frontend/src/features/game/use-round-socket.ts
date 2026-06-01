@@ -2,10 +2,13 @@ import { useEffect } from "react";
 import { io, type Socket } from "socket.io-client";
 import { auth } from "@/lib/auth/auth";
 import { queryClient } from "@/lib/query-client";
+import { walletQueryKey } from "@/features/wallet";
+import { useBetStore } from "./bet-store";
 import { fetchCurrentRound, roundHistoryQueryKey } from "./round-api";
 import { useRoundStore } from "./round-store";
 import {
   RoundEvent,
+  type BetConfirmedEvent,
   type BettingOpenedEvent,
   type CrashedEvent,
   type RunningEvent,
@@ -50,14 +53,25 @@ export function useRoundSocket(): void {
     });
     socket.on("disconnect", () => setConnection("disconnected"));
 
-    socket.on(RoundEvent.BETTING_OPENED, (event: BettingOpenedEvent) =>
-      applyBettingOpened(event),
-    );
+    socket.on(RoundEvent.BETTING_OPENED, (event: BettingOpenedEvent) => {
+      applyBettingOpened(event);
+      // A fresh Round opened: drop last Round's bet so the player can place a new one.
+      useBetStore.getState().resetForRound(event.roundNumber);
+    });
     socket.on(RoundEvent.RUNNING, (event: RunningEvent) => applyRunning(event));
     socket.on(RoundEvent.CRASHED, (event: CrashedEvent) => {
       applyCrashed(event);
       // The just-crashed Round is now terminal; refresh the history strip (ADR-0006).
       void queryClient.invalidateQueries({ queryKey: roundHistoryQueryKey });
+    });
+    socket.on(RoundEvent.BET_CONFIRMED, (event: BetConfirmedEvent) => {
+      const { bet, confirm } = useBetStore.getState();
+      // Public event: only react to the client's own bet. Confirmation means the stake left the
+      // wallet, so refetch the balance (ADR-0006: TanStack Query owns REST-derived state).
+      if (bet?.betId === event.betId) {
+        confirm(event.betId);
+        void queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      }
     });
 
     return () => {

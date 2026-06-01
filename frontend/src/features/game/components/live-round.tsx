@@ -2,6 +2,7 @@ import { RoundPhase } from "../round-contracts";
 import { useRoundStore } from "../round-store";
 import { useRoundSocket } from "../use-round-socket";
 import { useSecondsUntil } from "../use-seconds-until";
+import { BetPanel } from "./bet-panel";
 import { MultiplierCanvas } from "./multiplier-canvas";
 import { HistoryStrip } from "./history-strip";
 import {
@@ -58,6 +59,7 @@ export function LiveRound() {
             </span>
           </p>
         )}
+        <BetPanel />
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">Últimas rodadas</p>
           <HistoryStrip />

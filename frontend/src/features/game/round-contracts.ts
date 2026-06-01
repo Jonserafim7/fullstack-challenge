@@ -22,11 +22,14 @@ export interface RoundSnapshot {
   crashedAt: string | null;
 }
 
-// The server->client phase events (ADR-0003); mirrors the games gateway's RoundEvent names.
+// The server->client events (ADR-0003); mirrors the games gateway's RoundEvent names.
 export const RoundEvent = {
   BETTING_OPENED: "round.betting_opened",
   RUNNING: "round.running",
   CRASHED: "round.crashed",
+  // A Bet's stake was debited and it is now Confirmed. Public; the placing client matches betId
+  // against its own pending Bet (#14).
+  BET_CONFIRMED: "bet.confirmed",
 } as const;
 
 export interface BettingOpenedEvent {
@@ -53,4 +56,12 @@ export interface CrashedEvent {
   crashPoint: number;
   crashedAt: string;
   verification: CrashVerification;
+}
+
+export interface BetConfirmedEvent {
+  betId: string;
+  roundNumber: number;
+  username: string;
+  // Stake in integer cents (ADR-0004).
+  amountCents: number;
 }
