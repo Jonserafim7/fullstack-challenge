@@ -20,10 +20,15 @@ export const Queue = {
 export type Queue = (typeof Queue)[keyof typeof Queue];
 
 // Routing keys are hierarchical so the exchange can fan future money movements to the right
-// queue without re-topology. #6 only uses the smoke pair; #14 adds `wallet.*` / `bet.*`.
+// queue without re-topology. The smoke pair proves the rails (#6); the bet saga (#14) adds the
+// debit command (games -> wallets) and its confirmation reply (wallets -> games).
 export const RoutingKey = {
   SMOKE_PING: "smoke.ping",
   SMOKE_PONG: "smoke.pong",
+  // Command: games asks wallets to debit a bet's stake. Lands on wallets.inbox.
+  WALLET_DEBIT: "wallet.debit",
+  // Reply: wallets confirms the stake left the wallet. Lands on games.inbox.
+  BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
 } as const;
 export type RoutingKey = (typeof RoutingKey)[keyof typeof RoutingKey];
 
@@ -31,6 +36,8 @@ export type RoutingKey = (typeof RoutingKey)[keyof typeof RoutingKey];
 export const MessageType = {
   SMOKE_PING: "smoke.ping",
   SMOKE_PONG: "smoke.pong",
+  WALLET_DEBIT: "wallet.debit",
+  BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
 } as const;
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 
