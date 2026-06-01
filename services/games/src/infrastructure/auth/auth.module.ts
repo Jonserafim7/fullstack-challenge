@@ -8,6 +8,8 @@ import { JwtVerifier } from "./jwt-verifier";
 @Module({
   imports: [EnvModule],
   providers: [JwtVerifier, JwtAuthGuard],
-  exports: [JwtVerifier, JwtAuthGuard],
+  // Re-export EnvModule so EnvService resolves wherever the guard is instantiated (the controller's
+  // module), mirroring the wallets AuthModule.
+  exports: [JwtVerifier, JwtAuthGuard, EnvModule],
 })
 export class AuthModule {}
