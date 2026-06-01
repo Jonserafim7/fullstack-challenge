@@ -1,12 +1,13 @@
 import { RabbitMQModule } from "@golevelup/nestjs-rabbitmq";
 import { Module } from "@nestjs/common";
 import { DeadLetterRoutingKey, Exchange, Queue } from "@crash/messaging";
+import { DebitWalletUseCase } from "../../application/use-cases/debit-wallet.use-case";
 import { ProcessInboundMessageUseCase } from "../../application/use-cases/process-inbound-message.use-case";
 import { EnvModule } from "../env/env.module";
 import { EnvService } from "../env/env.service";
 import { DatabaseModule } from "../persistence/database.module";
 import { OutboxRelay } from "./outbox-relay";
-import { SmokeConsumer } from "./smoke.consumer";
+import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
 
 // Wires wallets into RabbitMQ (ADR-0008): asserts the shared crash.events + crash.dlx exchanges
 // and the wallets dead-letter queue, runs the outbox relay, and hosts the inbox consumer that
@@ -41,6 +42,11 @@ import { SmokeConsumer } from "./smoke.consumer";
       }),
     }),
   ],
-  providers: [OutboxRelay, SmokeConsumer, ProcessInboundMessageUseCase],
+  providers: [
+    OutboxRelay,
+    WalletsInboxConsumer,
+    ProcessInboundMessageUseCase,
+    DebitWalletUseCase,
+  ],
 })
 export class MessagingModule {}
