@@ -29,6 +29,9 @@ export const RoutingKey = {
   WALLET_DEBIT: "wallet.debit",
   // Reply: wallets confirms the stake left the wallet. Lands on games.inbox.
   BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
+  // Command: games tells wallets to credit a cashed-out bet's payout. Lands on wallets.inbox.
+  // Fire-and-forget — the credit is unconditional, so there is no reply (#8, ADR-0001).
+  WALLET_PAYOUT: "wallet.payout",
 } as const;
 export type RoutingKey = (typeof RoutingKey)[keyof typeof RoutingKey];
 
@@ -38,6 +41,7 @@ export const MessageType = {
   SMOKE_PONG: "smoke.pong",
   WALLET_DEBIT: "wallet.debit",
   BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
+  WALLET_PAYOUT: "wallet.payout",
 } as const;
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 
