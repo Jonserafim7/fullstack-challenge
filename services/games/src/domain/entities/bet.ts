@@ -143,6 +143,22 @@ export class Bet {
     this.currentStatus = BetStatus.LOST;
   }
 
+  // wallets refused the debit (insufficient funds): the stake never left, so the bet never
+  // participates. Only a Pending bet can be Rejected; a later rejection for an already-Voided bet is
+  // a no-op handled upstream, never reaching here (ADR-0001).
+  reject(): void {
+    this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.REJECTED);
+    this.currentStatus = BetStatus.REJECTED;
+  }
+
+  // The Round left Betting while this bet was still Pending: it missed the window and never
+  // participated. No money moves here — if its debit lands afterward, the late confirmation issues a
+  // compensating Refund (ADR-0001). Only a Pending bet can be Voided.
+  void(): void {
+    this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.VOIDED);
+    this.currentStatus = BetStatus.VOIDED;
+  }
+
   private ensureCurrentStatusIs(
     expected: BetStatus,
     attempted: BetStatus,

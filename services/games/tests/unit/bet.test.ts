@@ -85,6 +85,34 @@ describe("Bet", () => {
     expect(() => bet.lose()).toThrow(InvalidBetTransitionError);
   });
 
+  test("rejects a Pending Bet when the Wallet refuses the debit", () => {
+    const bet = placeBet();
+
+    bet.reject();
+
+    expect(bet.status).toBe(BetStatus.REJECTED);
+  });
+
+  test("refuses to reject a Bet that is not Pending", () => {
+    const bet = confirmedBet();
+
+    expect(() => bet.reject()).toThrow(InvalidBetTransitionError);
+  });
+
+  test("voids a Pending Bet that missed the betting window", () => {
+    const bet = placeBet();
+
+    bet.void();
+
+    expect(bet.status).toBe(BetStatus.VOIDED);
+  });
+
+  test("refuses to void a Bet that already Confirmed", () => {
+    const bet = confirmedBet();
+
+    expect(() => bet.void()).toThrow(InvalidBetTransitionError);
+  });
+
   test("restores a Bet from persistence at its stored status", () => {
     const confirmedAt = new Date("2026-01-01T00:00:03Z");
     const bet = Bet.restore({
