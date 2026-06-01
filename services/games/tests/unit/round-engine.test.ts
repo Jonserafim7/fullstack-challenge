@@ -7,6 +7,7 @@ import type {
   RunningEvent,
 } from "../../src/application/realtime/round-event-publisher";
 import type { RoundRepository } from "../../src/application/repositories/round.repository";
+import type { SettleRoundUseCase } from "../../src/application/use-cases/settle-round.use-case";
 import type { EnvService } from "../../src/infrastructure/env/env.service";
 import { createHashChain } from "../../src/domain/provably-fair";
 
@@ -51,12 +52,21 @@ function buildEngine(maxRoundNumber: number): {
     bettingOpened: (event) => captured.bettingOpened.push(event),
     running: (event) => captured.running.push(event),
     crashed: (event) => captured.crashed.push(event),
-    // The engine never confirms bets (that is the debit-reply consumer's job); a no-op keeps the
-    // fake satisfying the port.
+    // The engine never confirms or cashes out bets (those are the consumer's and the HTTP
+    // use-case's jobs); no-ops keep the fake satisfying the port.
     betConfirmed: () => {},
+    betCashedOut: () => {},
   };
 
-  return { engine: new RoundEngine(rounds, env, publisher), captured };
+  // The crash timer is pushed far out, so settlement never runs here; a no-op fake suffices.
+  const settleRound = {
+    execute: async () => {},
+  } as unknown as SettleRoundUseCase;
+
+  return {
+    engine: new RoundEngine(rounds, env, publisher, settleRound),
+    captured,
+  };
 }
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 5));

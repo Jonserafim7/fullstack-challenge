@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { RoutingKey } from "@crash/messaging";
 import { Prisma } from "../../../generated/prisma/client";
 import {
   NewOutboxMessage,
@@ -36,7 +37,16 @@ export class PrismaOutboxRepository implements OutboxStore {
     maxAttempts: number;
   }): Promise<PendingOutboxMessage[]> {
     const rows = await this.prisma.outboxMessage.findMany({
-      where: { status: OutboxStatus.PENDING, attempts: { lt: maxAttempts } },
+      // Most rows give up after maxAttempts so a poison message stops draining. Payout credits are
+      // the exception: ADR-0001 makes credits unconditional and never abandoned, so a stuck payout
+      // keeps retrying forever (a slow/down wallets only delays it). The debit command still caps.
+      where: {
+        status: OutboxStatus.PENDING,
+        OR: [
+          { attempts: { lt: maxAttempts } },
+          { routingKey: RoutingKey.WALLET_PAYOUT },
+        ],
+      },
       orderBy: { createdAt: "asc" },
       take: limit,
     });

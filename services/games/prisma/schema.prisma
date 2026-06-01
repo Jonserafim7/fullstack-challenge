@@ -40,10 +40,14 @@ model Bet {
   roundNumber Int       @map("round_number")
   playerId    String    @map("player_id")
   username    String
-  stake       BigInt
-  status      String
-  createdAt   DateTime  @default(now()) @map("created_at")
-  confirmedAt DateTime? @map("confirmed_at")
+  stake               BigInt
+  status              String
+  createdAt           DateTime  @default(now()) @map("created_at")
+  confirmedAt         DateTime? @map("confirmed_at")
+  // Locked at cash out: the multiplier in integer hundredths (247 = 2.47x) and the moment. Null
+  // until the bet is Cashed Out. The payout credit is stake × this multiplier (#8, ADR-0001).
+  cashedOutMultiplier Int?      @map("cashed_out_multiplier")
+  cashedOutAt         DateTime? @map("cashed_out_at")
 
   @@unique([roundNumber, playerId])
   @@index([roundNumber])

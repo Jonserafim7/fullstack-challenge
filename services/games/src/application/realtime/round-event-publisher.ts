@@ -7,6 +7,9 @@ export const RoundEvent = {
   // A Bet's stake was debited: it is now Confirmed. Public, so every client sees who is in the
   // Round; the placing client matches betId against its own pending Bet (#14).
   BET_CONFIRMED: "bet.confirmed",
+  // A player cashed out: the Bet locked its multiplier and won (#8). Public, so every client sees
+  // who escaped before the crash; the placing client matches betId to reconcile its own Bet.
+  BET_CASHED_OUT: "bet.cashed_out",
 } as const;
 
 export interface BettingOpenedEvent {
@@ -46,6 +49,17 @@ export interface BetConfirmedEvent {
   amountCents: number;
 }
 
+// Broadcast when a Bet cashes out. Public, with the username, locked multiplier (integer
+// hundredths, 247 = 2.47x) and payout cents, so clients can show winners as they escape; the placer
+// reconciles its own bet by betId. The payout credit itself is asynchronous (ADR-0001).
+export interface BetCashedOutEvent {
+  betId: string;
+  roundNumber: number;
+  username: string;
+  multiplierHundredths: number;
+  payoutCents: number;
+}
+
 // The port the use-cases depend on to push server->client events, keeping them decoupled from the
 // WebSocket transport (mirrors the RoundRepository port). The gateway implements it.
 export abstract class RoundEventPublisher {
@@ -53,4 +67,5 @@ export abstract class RoundEventPublisher {
   abstract running(event: RunningEvent): void;
   abstract crashed(event: CrashedEvent): void;
   abstract betConfirmed(event: BetConfirmedEvent): void;
+  abstract betCashedOut(event: BetCashedOutEvent): void;
 }
