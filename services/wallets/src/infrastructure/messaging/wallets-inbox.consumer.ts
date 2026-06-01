@@ -8,6 +8,7 @@ import {
   RoutingKey,
   type MessageEnvelope,
 } from "@crash/messaging";
+import { CreditWalletUseCase } from "../../application/use-cases/credit-wallet.use-case";
 import { DebitWalletUseCase } from "../../application/use-cases/debit-wallet.use-case";
 import { ProcessInboundMessageUseCase } from "../../application/use-cases/process-inbound-message.use-case";
 
@@ -24,11 +25,16 @@ export class WalletsInboxConsumer {
   constructor(
     private readonly processInbound: ProcessInboundMessageUseCase,
     private readonly debitWallet: DebitWalletUseCase,
+    private readonly creditWallet: CreditWalletUseCase,
   ) {}
 
   @RabbitSubscribe({
     exchange: Exchange.EVENTS,
-    routingKey: [RoutingKey.SMOKE_PING, RoutingKey.WALLET_DEBIT],
+    routingKey: [
+      RoutingKey.SMOKE_PING,
+      RoutingKey.WALLET_DEBIT,
+      RoutingKey.WALLET_PAYOUT,
+    ],
     queue: Queue.WALLETS_INBOX,
     queueOptions: {
       durable: true,
@@ -53,6 +59,8 @@ export class WalletsInboxConsumer {
     switch (envelope.type) {
       case MessageType.WALLET_DEBIT:
         return this.debitWallet.handle(envelope);
+      case MessageType.WALLET_PAYOUT:
+        return this.creditWallet.handle(envelope);
       case MessageType.SMOKE_PING:
         return this.processInbound.handle(envelope);
       default:

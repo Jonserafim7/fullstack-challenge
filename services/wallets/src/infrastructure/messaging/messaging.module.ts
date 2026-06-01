@@ -1,6 +1,7 @@
 import { RabbitMQModule } from "@golevelup/nestjs-rabbitmq";
 import { Module } from "@nestjs/common";
 import { DeadLetterRoutingKey, Exchange, Queue } from "@crash/messaging";
+import { CreditWalletUseCase } from "../../application/use-cases/credit-wallet.use-case";
 import { DebitWalletUseCase } from "../../application/use-cases/debit-wallet.use-case";
 import { ProcessInboundMessageUseCase } from "../../application/use-cases/process-inbound-message.use-case";
 import { EnvModule } from "../env/env.module";
@@ -47,6 +48,7 @@ import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
     WalletsInboxConsumer,
     ProcessInboundMessageUseCase,
     DebitWalletUseCase,
+    CreditWalletUseCase,
   ],
 })
 export class MessagingModule {}

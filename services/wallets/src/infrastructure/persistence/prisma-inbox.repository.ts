@@ -69,6 +69,33 @@ export class PrismaInboxRepository implements InboxStore {
     });
   }
 
+  async recordCredit({
+    messageKey,
+    type,
+    playerId,
+    amountCents,
+  }: {
+    messageKey: string;
+    type: string;
+    playerId: string;
+    amountCents: number;
+  }): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await this.recordKey(tx, { messageKey, type });
+
+      // Credit unconditionally (ADR-0001) — no balance guard, unlike a debit. The increment takes a
+      // row lock, so concurrent credits/debits on the same wallet cannot lose an update; a redelivery
+      // of the same payout is already a no-op via the inbox key above.
+      const { count } = await tx.wallet.updateMany({
+        where: { playerId },
+        data: { balance: { increment: BigInt(amountCents) } },
+      });
+      if (count === 0) {
+        throw new WalletNotFoundError();
+      }
+    });
+  }
+
   // The dedup is the inbox primary key alone. Scoping the duplicate check to this insert means a
   // unique-constraint failure elsewhere in the transaction (a real anomaly) propagates instead of
   // being mistaken for a redelivery and silently swallowed.
