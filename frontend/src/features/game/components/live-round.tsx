@@ -33,6 +33,7 @@ export function LiveRound() {
   const roundNumber = useRoundStore((state) => state.roundNumber);
   const phase = useRoundStore((state) => state.phase);
   const bettingEndsAt = useRoundStore((state) => state.bettingEndsAt);
+  const seedHash = useRoundStore((state) => state.seedHash);
 
   const isBetting = phase === RoundPhase.BETTING;
   const secondsToClose = useSecondsUntil(isBetting ? bettingEndsAt : null);
@@ -57,6 +58,17 @@ export function LiveRound() {
             Apostas fecham em{" "}
             <span className="font-semibold tabular-nums text-foreground">
               {secondsToClose.toFixed(1)}s
+            </span>
+          </p>
+        )}
+        {isBetting && seedHash && (
+          <p
+            className="truncate text-center text-xs text-muted-foreground"
+            title={seedHash}
+          >
+            Commitment desta rodada:{" "}
+            <span className="font-mono text-foreground">
+              {seedHash.slice(0, 16)}…
             </span>
           </p>
         )}

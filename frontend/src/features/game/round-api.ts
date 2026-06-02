@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { type RoundSnapshot } from "./round-contracts";
+import { type RoundSnapshot, type RoundVerification } from "./round-contracts";
 
 export async function fetchCurrentRound(): Promise<RoundSnapshot | null> {
   try {
@@ -43,5 +43,25 @@ export function useRoundHistoryQuery() {
   return useQuery({
     queryKey: roundHistoryQueryKey,
     queryFn: fetchRoundHistory,
+  });
+}
+
+async function fetchRoundVerification(
+  roundNumber: number,
+): Promise<RoundVerification> {
+  const { data } = await api.get<RoundVerification>(
+    `/games/rounds/${roundNumber}/verify`,
+  );
+  return data;
+}
+
+// The provably-fair data for one past Round. Only enabled once a Round is selected; the result is
+// immutable (a terminal Round never changes), so it never needs refetching.
+export function useRoundVerificationQuery(roundNumber: number | null) {
+  return useQuery({
+    queryKey: ["rounds", "verify", roundNumber],
+    queryFn: () => fetchRoundVerification(roundNumber!),
+    enabled: roundNumber !== null,
+    staleTime: Infinity,
   });
 }
