@@ -23,6 +23,13 @@ export function notifyCashOutSuccess({
   });
 }
 
+export function notifyBetConfirmed({ stakeCents }: { stakeCents: number }) {
+  toast.success("Aposta confirmada", {
+    description: `${formatCents(stakeCents)} na rodada — boa sorte!`,
+    icon: successIcon,
+  });
+}
+
 export function notifyLateCashOut() {
   toast.error("Tarde demais", {
     description: "A rodada já crashou.",

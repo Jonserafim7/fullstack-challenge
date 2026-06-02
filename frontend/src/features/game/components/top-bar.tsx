@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  CircleDollarSignIcon,
-  LogOutIcon,
-  UserIcon,
-  ZapIcon,
-} from "lucide-react";
+import { LogOutIcon, RocketIcon, UserIcon, WalletIcon } from "lucide-react";
 import { auth } from "@/lib/auth/auth";
 import { useBalanceQuery } from "@/features/wallet";
 import { formatCents } from "@/lib/format";
@@ -23,7 +18,7 @@ export function TopBar({ onLogout }: { onLogout: () => void }) {
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-[#141a1f]/95 px-[18px] py-3.5">
       <div className="flex items-center gap-3">
         <div className="grid size-11 place-items-center rounded-full border-4 border-primary bg-[#16221c] text-primary shadow-[0_8px_20px_-8px_rgb(132_255_52_/_0.3)]">
-          <ZapIcon className="size-5" strokeWidth={1.5} />
+          <RocketIcon className="size-5" strokeWidth={1.5} />
         </div>
         <div>
           <p className="text-[15px] leading-none font-black text-white">
@@ -42,10 +37,7 @@ export function TopBar({ onLogout }: { onLogout: () => void }) {
             bump && "animate-bump",
           )}
         >
-          <span className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
-            Saldo
-          </span>
-          <CircleDollarSignIcon className="size-4 text-primary" />
+          <WalletIcon className="size-4 text-primary" />
           {isPending || balance === null ? (
             <Skeleton className="h-4 w-20" />
           ) : (

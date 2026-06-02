@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { type RoundSnapshot, type RoundVerification } from "./round-contracts";
 
@@ -16,7 +16,7 @@ export async function fetchCurrentRound(): Promise<RoundSnapshot | null> {
   }
 }
 
-interface RoundHistoryResponse {
+export interface RoundHistoryPage {
   rounds: RoundSnapshot[];
   total: number;
   page: number;
@@ -25,24 +25,24 @@ interface RoundHistoryResponse {
 
 export const roundHistoryQueryKey = ["rounds", "history"] as const;
 
-const HISTORY_PAGE_SIZE = 20;
+export const ROUND_HISTORY_PAGE_SIZE = 20;
 
-async function fetchRoundHistory(): Promise<RoundSnapshot[]> {
-  const { data } = await api.get<RoundHistoryResponse>(
-    "/games/rounds/history",
-    {
-      params: { page: 1, pageSize: HISTORY_PAGE_SIZE },
-    },
-  );
-  return data.rounds;
+async function fetchRoundHistory(page: number): Promise<RoundHistoryPage> {
+  const { data } = await api.get<RoundHistoryPage>("/games/rounds/history", {
+    params: { page, pageSize: ROUND_HISTORY_PAGE_SIZE },
+  });
+  return data;
 }
 
-// The last ~20 terminal Rounds for the history strip; refetched on each round.crashed
-// (the socket hook invalidates this key) so the strip stays current without polling.
-export function useRoundHistoryQuery() {
+// A page of terminal Rounds for the history strip. Page 1 is the most recent ~20, refetched on each
+// round.crashed (the socket hook invalidates the ["rounds","history"] prefix, which matches every
+// page key) so the live page stays current without polling; older pages are browsable via the UI.
+// keepPreviousData avoids the strip flashing empty while the next page loads.
+export function useRoundHistoryQuery(page: number) {
   return useQuery({
-    queryKey: roundHistoryQueryKey,
-    queryFn: fetchRoundHistory,
+    queryKey: [...roundHistoryQueryKey, page],
+    queryFn: () => fetchRoundHistory(page),
+    placeholderData: keepPreviousData,
   });
 }
 

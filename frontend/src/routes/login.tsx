@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { LogInIcon, ZapIcon } from "lucide-react";
+import { LogInIcon, RocketIcon } from "lucide-react";
 import { auth } from "@/lib/auth/auth";
 
 export const Route = createFileRoute("/login")({
@@ -23,7 +23,7 @@ function LoginPage() {
     >
       <div className="w-full max-w-[400px] rounded-panel border border-border bg-card/90 px-[30px] py-9 text-center shadow-shell">
         <div className="mx-auto mb-[18px] grid size-16 place-items-center rounded-full border-4 border-primary bg-[#16221c] text-primary shadow-[0_8px_20px_-8px_rgb(132_255_52_/_0.3)]">
-          <ZapIcon className="size-8" strokeWidth={1.5} />
+          <RocketIcon className="size-8" strokeWidth={1.5} />
         </div>
         <h1 className="text-[26px] font-black text-white">Crash Game</h1>
         <p className="mt-2 text-sm text-muted-foreground">

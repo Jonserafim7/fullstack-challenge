@@ -5,7 +5,11 @@ import { queryClient } from "@/lib/query-client";
 import { walletQueryKey } from "@/features/wallet";
 import { useBetStore } from "./bet-store";
 import { BetStatus } from "./bet-api";
-import { notifyBetRejected, notifyCrashedLost } from "./game-toasts";
+import {
+  notifyBetConfirmed,
+  notifyBetRejected,
+  notifyCrashedLost,
+} from "./game-toasts";
 import { useParticipantsStore } from "./participants-store";
 import { betHistoryQueryKey } from "./bet-history-api";
 import { fetchCurrentRound, roundHistoryQueryKey } from "./round-api";
@@ -88,6 +92,7 @@ export function useRoundSocket(): void {
       // and the bet history (ADR-0006: TanStack Query owns REST-derived state).
       if (bet?.betId === event.betId) {
         confirm(event.betId);
+        notifyBetConfirmed({ stakeCents: event.amountCents });
         void queryClient.invalidateQueries({ queryKey: walletQueryKey });
         void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
       }
