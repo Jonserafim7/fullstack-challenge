@@ -14,6 +14,9 @@ export const envSchema = z.object({
   KEYCLOAK_ISSUER: z.string().url(),
   KEYCLOAK_JWKS_URI: z.string().url(),
   TEST_PLAYER_ID: z.string().uuid().optional(),
+  // A second seeded player so the live multiplayer presence (#9) can be demoed with two distinct
+  // usernames. Optional — absent in production, present in the local Docker realm.
+  TEST_PLAYER_ID_2: z.string().uuid().optional(),
   WALLET_STARTING_BALANCE_CENTS: z
     .string()
     .regex(/^\d+$/)

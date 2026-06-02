@@ -44,6 +44,22 @@
           "temporary": false
         }
       ]
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "username": "player2",
+      "email": "player2@crash-game.dev",
+      "firstName": "Test",
+      "lastName": "Player Two",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "player123",
+          "temporary": false
+        }
+      ]
     }
   ]
 }
