@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth/auth";
 import { queryClient } from "@/lib/query-client";
 import { walletQueryKey } from "@/features/wallet";
 import { useBetStore } from "./bet-store";
+import { useParticipantsStore } from "./participants-store";
+import { betHistoryQueryKey } from "./bet-history-api";
 import { fetchCurrentRound, roundHistoryQueryKey } from "./round-api";
 import { useRoundStore } from "./round-store";
 import {
@@ -55,33 +57,43 @@ export function useRoundSocket(): void {
     });
     socket.on("disconnect", () => setConnection("disconnected"));
 
-    socket.on(RoundEvent.BETTING_OPENED, (event: BettingOpenedEvent) =>
-      applyBettingOpened(event),
-    );
+    socket.on(RoundEvent.BETTING_OPENED, (event: BettingOpenedEvent) => {
+      applyBettingOpened(event);
+      // A new Round began: the live participants list only shows the Round in progress, so reset it.
+      useParticipantsStore.getState().clear();
+    });
     socket.on(RoundEvent.RUNNING, (event: RunningEvent) => applyRunning(event));
     socket.on(RoundEvent.CRASHED, (event: CrashedEvent) => {
       applyCrashed(event);
-      // The just-crashed Round is now terminal; refresh the history strip (ADR-0006).
+      // The just-crashed Round is now terminal; refresh the history strip (ADR-0006). Any of the
+      // player's Confirmed bets just settled (Lost), so refresh their bet history too.
       void queryClient.invalidateQueries({ queryKey: roundHistoryQueryKey });
+      void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
     });
     socket.on(RoundEvent.BET_CONFIRMED, (event: BetConfirmedEvent) => {
+      // Public event: every client sees who joined the Round, so add it to the live list (#9).
+      useParticipantsStore.getState().confirm(event);
       const { bet, confirm } = useBetStore.getState();
-      // Public event: only react to the client's own bet. Confirmation means the stake left the
-      // wallet, so refetch the balance (ADR-0006: TanStack Query owns REST-derived state).
+      // The client's own bet: confirmation means the stake left the wallet, so refetch the balance
+      // and the bet history (ADR-0006: TanStack Query owns REST-derived state).
       if (bet?.betId === event.betId) {
         confirm(event.betId);
         void queryClient.invalidateQueries({ queryKey: walletQueryKey });
+        void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
       }
     });
     socket.on(RoundEvent.BET_REJECTED, (event: BetRejectedEvent) => {
       const { bet, reject } = useBetStore.getState();
       // Private event: the wallet refused this player's debit. Reflect Rejected on the placer's own
-      // bet (no money moved, so the balance is unchanged — no refetch).
+      // bet (no money moved, so the balance is unchanged — no refetch) and refresh their history.
       if (bet?.betId === event.betId) {
         reject(event.betId);
+        void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
       }
     });
     socket.on(RoundEvent.BET_CASHED_OUT, (event: BetCashedOutEvent) => {
+      // Public event: every client sees who escaped before the crash, so update the live list (#9).
+      useParticipantsStore.getState().cashOut(event);
       const { bet, cashOut } = useBetStore.getState();
       // Backstop for the placer: the HTTP cash-out response normally updates the store and the
       // balance, but if it was lost this public event still reconciles the bet to Cashed Out
@@ -92,6 +104,7 @@ export function useRoundSocket(): void {
           cashedOutMultiplier: event.multiplierHundredths,
           payoutCents: event.payoutCents,
         });
+        void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
       }
     });
 
