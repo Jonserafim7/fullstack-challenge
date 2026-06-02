@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+import { ClockIcon, ShieldCheckIcon, ZapIcon } from "lucide-react";
 import { elapsedMsToReach, multiplierAt } from "@crash/crash-curve";
 import { RoundPhase } from "../round-contracts";
 import { formatMultiplier } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useRoundStore } from "../round-store";
 
 // The rising multiplier is drawn off React state (ADR-0006): a requestAnimationFrame loop
@@ -19,6 +21,7 @@ const CURVE_SAMPLES = 120;
 export function MultiplierCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const readoutRef = useRef<HTMLSpanElement>(null);
+  const phase = useRoundStore((state) => state.phase);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -78,7 +81,16 @@ export function MultiplierCanvas() {
       });
 
       readout.textContent = formatMultiplier(displayMultiplier);
-      readout.style.color = isTerminal ? CRASHED_COLOR : "#f8fafc";
+      if (isTerminal) {
+        readout.style.color = CRASHED_COLOR;
+        readout.style.textShadow = "0 0 36px rgb(248 113 113 / 0.5)";
+      } else if (phase === RoundPhase.RUNNING) {
+        readout.style.color = "#f8fafc";
+        readout.style.textShadow = "0 0 36px rgb(132 255 52 / 0.4)";
+      } else {
+        readout.style.color = "#f8fafc";
+        readout.style.textShadow = "none";
+      }
 
       frameId = requestAnimationFrame(render);
     };
@@ -87,17 +99,50 @@ export function MultiplierCanvas() {
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  const isTerminal =
+    phase === RoundPhase.CRASHED || phase === RoundPhase.SETTLED;
+  const sub = subFor(phase);
+
   return (
-    <div className="relative h-56 w-full overflow-hidden rounded-lg border bg-card">
+    <div className="relative h-[clamp(260px,42vh,400px)] w-full overflow-hidden rounded-panel border border-border bg-black/25">
       <canvas ref={canvasRef} className="h-full w-full" />
-      <span
-        ref={readoutRef}
-        className="pointer-events-none absolute inset-0 grid place-items-center text-5xl font-bold tabular-nums"
-      >
-        1.00x
-      </span>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span
+          ref={readoutRef}
+          className="text-[clamp(54px,11vw,104px)] leading-[0.9] font-black tracking-tight text-slate-50 tabular-nums"
+        >
+          1.00x
+        </span>
+        <span
+          className={cn(
+            "mt-3.5 inline-flex items-center gap-2 rounded-full border border-border bg-black/40 px-4 py-2 text-sm font-semibold",
+            isTerminal ? "text-destructive" : "text-foreground",
+          )}
+        >
+          <sub.Icon
+            className={cn(
+              "size-4",
+              isTerminal ? "text-destructive" : "text-primary",
+            )}
+          />
+          {sub.text}
+        </span>
+      </div>
     </div>
   );
+}
+
+function subFor(phase: RoundPhase | null) {
+  if (phase === RoundPhase.BETTING)
+    return { Icon: ClockIcon, text: "Apostas abertas — aposte agora" };
+  if (phase === RoundPhase.RUNNING)
+    return { Icon: ZapIcon, text: "Saque antes do crash" };
+  if (phase === RoundPhase.CRASHED || phase === RoundPhase.SETTLED)
+    return {
+      Icon: ShieldCheckIcon,
+      text: "Crash revelado — nova rodada já vem",
+    };
+  return { Icon: ClockIcon, text: "Aguardando rodada…" };
 }
 
 function drawScene(
@@ -128,8 +173,8 @@ function drawScene(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-  const padX = 10;
-  const padY = 16;
+  const padX = 16;
+  const padY = 22;
   const left = padX;
   const right = cssWidth - padX;
   const top = padY;
@@ -163,7 +208,7 @@ function drawScene(
     }
   };
 
-  // Translucent fill under the curve, then the stroke on top.
+  // Translucent fill under the curve, then the glowing stroke on top.
   tracePath();
   ctx.lineTo(tipX, bottom);
   ctx.lineTo(left, bottom);
@@ -173,21 +218,25 @@ function drawScene(
     : "rgba(52, 211, 153, 0.12)";
   ctx.fill();
 
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
   tracePath();
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
   ctx.strokeStyle = color;
   ctx.stroke();
+  ctx.restore();
 
   // The crash burst: a red glow at the tip that fades over CRASH_FLASH_MS.
   if (crashFade > 0) {
     ctx.beginPath();
-    ctx.arc(tipX, tipY, 6 + 40 * (1 - crashFade), 0, Math.PI * 2);
+    ctx.arc(tipX, tipY, 6 + 46 * (1 - crashFade), 0, Math.PI * 2);
     ctx.fillStyle = `rgba(248, 113, 113, ${0.45 * crashFade})`;
     ctx.fill();
   }
 
   ctx.beginPath();
-  ctx.arc(tipX, tipY, 4, 0, Math.PI * 2);
+  ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
 }

@@ -1,7 +1,10 @@
 import { useMemo } from "react";
+import { UsersIcon } from "lucide-react";
 import { auth } from "@/lib/auth/auth";
 import { formatCents, formatMultiplier } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useParticipantsStore, type Participant } from "../participants-store";
+import { Panel, PanelHeader } from "./panel";
 
 // Cashed-out players (the winners) float to the top, then the rest by stake, biggest first.
 function compareParticipants(a: Participant, b: Participant): number {
@@ -14,7 +17,13 @@ function compareParticipants(a: Participant, b: Participant): number {
   return a.username.localeCompare(b.username);
 }
 
-export function ParticipantsList() {
+function initialsOf(username: string): string {
+  const parts = username.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return username.slice(0, 2).toUpperCase();
+}
+
+export function ParticipantsList({ className }: { className?: string }) {
   const participants = useParticipantsStore((state) => state.participants);
   const ownUsername = auth.username;
 
@@ -23,50 +32,79 @@ export function ParticipantsList() {
     [participants],
   );
 
-  if (rows.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground">Ninguém apostou ainda.</p>
-    );
-  }
-
   return (
-    <ul className="space-y-1">
-      {rows.map((participant) => (
-        <li
-          key={participant.betId}
-          className="flex items-center justify-between gap-2 text-sm tabular-nums"
-        >
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate">{participant.username}</span>
-            {participant.username === ownUsername && (
-              <span className="shrink-0 rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
-                Você
-              </span>
-            )}
-          </span>
-          <ParticipantStatus participant={participant} />
-        </li>
-      ))}
-    </ul>
+    <Panel className={className}>
+      <PanelHeader
+        title="Apostas da rodada atual"
+        icon={<UsersIcon className="size-4 text-primary" />}
+        tag="ao vivo"
+      />
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Ninguém apostou ainda.</p>
+      ) : (
+        <ul className="flex max-h-[340px] flex-col gap-2 overflow-y-auto">
+          {rows.map((participant) => {
+            const isSelf = participant.username === ownUsername;
+            return (
+              <li
+                key={participant.betId}
+                className="flex items-center justify-between gap-3 rounded-2xl bg-black/20 px-3 py-2.5"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    className={cn(
+                      "grid size-[34px] shrink-0 place-items-center rounded-full text-xs font-black",
+                      isSelf
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-white/8 text-foreground",
+                    )}
+                  >
+                    {isSelf ? "VC" : initialsOf(participant.username)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-white">
+                      {isSelf ? "Você" : participant.username}
+                    </p>
+                    <p className="text-xs tabular-nums text-muted-foreground/80">
+                      {formatCents(participant.amountCents)}
+                    </p>
+                  </div>
+                </div>
+                <ParticipantStatus participant={participant} isSelf={isSelf} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Panel>
   );
 }
 
-function ParticipantStatus({ participant }: { participant: Participant }) {
+function ParticipantStatus({
+  participant,
+  isSelf,
+}: {
+  participant: Participant;
+  isSelf: boolean;
+}) {
   if (
     participant.status === "cashed_out" &&
     participant.multiplierHundredths !== null
   ) {
     return (
-      <span className="shrink-0 font-medium text-emerald-500">
-        {formatCents(participant.amountCents)} · sacou em{" "}
-        {formatMultiplier(participant.multiplierHundredths / 100)} (+
-        {formatCents(participant.payoutCents ?? 0)})
+      <span className="shrink-0 text-xs font-bold text-success tabular-nums">
+        sacou {formatMultiplier(participant.multiplierHundredths / 100)}
       </span>
     );
   }
   return (
-    <span className="shrink-0 text-muted-foreground">
-      {formatCents(participant.amountCents)} · na rodada
+    <span
+      className={cn(
+        "shrink-0 text-xs font-bold",
+        isSelf ? "text-info" : "text-muted-foreground",
+      )}
+    >
+      na rodada
     </span>
   );
 }
