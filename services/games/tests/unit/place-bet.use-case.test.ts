@@ -22,6 +22,7 @@ function bettingRound(): Round {
     serverSeed: "s",
     clientSeed: "c",
     houseEdge: 0.01,
+    seedHash: "h",
     bettingEndsAt: new Date("2026-01-01T00:00:05Z"),
   });
 }
@@ -33,6 +34,7 @@ function runningRound(): Round {
     serverSeed: "s",
     clientSeed: "c",
     houseEdge: 0.01,
+    seedHash: "h",
     phase: RoundPhase.RUNNING,
     bettingEndsAt: new Date("2026-01-01T00:00:05Z"),
     startedAt: new Date("2026-01-01T00:00:05Z"),

@@ -12,8 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p packages/money/tsconfig.json && tsc --noEmit -p packages/crash-curve/tsconfig.json && tsc --noEmit -p packages/messaging/tsconfig.json && tsc --noEmit -p services/wallets/tsconfig.json && tsc --noEmit -p services/games/tsconfig.json",
-    "test:unit": "bun test packages/money/tests/unit packages/crash-curve/tests/unit services/wallets/tests/unit services/games/tests/unit",
+    "typecheck": "tsc --noEmit -p packages/money/tsconfig.json && tsc --noEmit -p packages/crash-curve/tsconfig.json && tsc --noEmit -p packages/provably-fair/tsconfig.json && tsc --noEmit -p packages/messaging/tsconfig.json && tsc --noEmit -p services/wallets/tsconfig.json && tsc --noEmit -p services/games/tsconfig.json",
+    "test:unit": "bun test packages/money/tests/unit packages/crash-curve/tests/unit packages/provably-fair/tests/unit services/wallets/tests/unit services/games/tests/unit",
     "prepare": "lefthook install || true"
   },
   "devDependencies": {

@@ -5,6 +5,7 @@ import { GetBetUseCase } from "../application/use-cases/get-bet.use-case";
 import { GetBetHistoryUseCase } from "../application/use-cases/get-bet-history.use-case";
 import { GetCurrentRoundUseCase } from "../application/use-cases/get-current-round.use-case";
 import { GetRoundHistoryUseCase } from "../application/use-cases/get-round-history.use-case";
+import { GetRoundVerificationUseCase } from "../application/use-cases/get-round-verification.use-case";
 import { PlaceBetUseCase } from "../application/use-cases/place-bet.use-case";
 import { AuthModule } from "../infrastructure/auth/auth.module";
 import { DatabaseModule } from "../infrastructure/persistence/database.module";
@@ -25,6 +26,7 @@ import { SmokeController } from "./controllers/smoke.controller";
   providers: [
     GetCurrentRoundUseCase,
     GetRoundHistoryUseCase,
+    GetRoundVerificationUseCase,
     EnqueueSmokePingUseCase,
     PlaceBetUseCase,
     CashOutBetUseCase,

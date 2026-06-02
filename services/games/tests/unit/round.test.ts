@@ -9,6 +9,7 @@ function openRound(): Round {
     serverSeed: "server-seed",
     clientSeed: "client-seed",
     houseEdge: 0.01,
+    seedHash: "seed-hash",
     bettingEndsAt: new Date("2026-01-01T00:00:05Z"),
   });
 }
@@ -71,6 +72,7 @@ describe("Round", () => {
       serverSeed: "s",
       clientSeed: "c",
       houseEdge: 0.01,
+      seedHash: "seed-hash",
       phase: RoundPhase.RUNNING,
       bettingEndsAt: new Date("2026-01-01T00:00:05Z"),
       startedAt: new Date("2026-01-01T00:00:05Z"),

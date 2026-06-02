@@ -23,6 +23,11 @@ model Round {
   serverSeed    String    @map("server_seed")
   clientSeed    String    @map("client_seed")
   houseEdge     Float     @map("house_edge")
+  // The Commitment this Round's Server Seed is checked against (SHA256(serverSeed) == seedHash):
+  // the previous Round's revealed seed, or the genesis Commitment for Round 1. Persisted so the
+  // verify endpoint can prove the chain link for any past Round, including Round 1 (#5, ADR-0002).
+  // Nullable for Rounds created before this column existed.
+  seedHash      String?   @map("seed_hash")
   bettingEndsAt DateTime? @map("betting_ends_at")
   startedAt     DateTime? @map("started_at")
   crashedAt     DateTime? @map("crashed_at")
