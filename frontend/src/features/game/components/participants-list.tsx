@@ -37,7 +37,6 @@ export function ParticipantsList({ className }: { className?: string }) {
       <PanelHeader
         title="Apostas da rodada atual"
         icon={<UsersIcon className="size-4 text-primary" />}
-        tag="ao vivo"
       />
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Ninguém apostou ainda.</p>

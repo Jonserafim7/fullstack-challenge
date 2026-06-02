@@ -19,7 +19,7 @@ export interface BetHistoryPage {
   pageSize: number;
 }
 
-export const BET_HISTORY_PAGE_SIZE = 10;
+export const BET_HISTORY_PAGE_SIZE = 5;
 
 // The page-less prefix of the per-page query keys built in useBetHistoryQuery ([...key, page]).
 // Invalidating this prefix matches every cached page at once, so the socket can refresh the whole

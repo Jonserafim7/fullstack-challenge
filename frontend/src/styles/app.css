@@ -123,7 +123,7 @@
 .dark {
   /* Casino palette mapped onto shadcn's semantic slots (distilled from the design handoff:
      near-black green base, lime-neon primary, dark glass panels). */
-  --background: #050908; /* page behind the app shell */
+  --background: #070b0a; /* page behind the app shell */
   --foreground: #f1f5f9; /* strong body text; headings use text-white */
   --card: #121b20; /* glass panel base (panels add blur + opacity over this) */
   --card-foreground: #f1f5f9;

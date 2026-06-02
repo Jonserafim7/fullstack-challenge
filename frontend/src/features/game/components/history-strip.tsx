@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { HistoryIcon } from "lucide-react";
-import { useRoundHistoryQuery } from "../round-api";
+import { ROUND_HISTORY_PAGE_SIZE, useRoundHistoryQuery } from "../round-api";
 import { formatMultiplier } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Panel, PanelHeader } from "./panel";
 import { RoundVerificationDialog } from "./round-verification-dialog";
 
@@ -15,15 +23,22 @@ function chipClass(multiplier: number): string {
 }
 
 export function HistoryStrip({ className }: { className?: string }) {
-  const { data, isPending, isError } = useRoundHistoryQuery();
+  // Page 1 is the live latest ~20 (refreshed by the socket); higher pages browse older rounds.
+  const [page, setPage] = useState(1);
+  const { data, isPending, isError } = useRoundHistoryQuery(page);
   const [verifyingRound, setVerifyingRound] = useState<number | null>(null);
+
+  const totalPages = data
+    ? Math.max(1, Math.ceil(data.total / data.pageSize))
+    : 1;
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
 
   return (
     <Panel className={className}>
       <PanelHeader
         title="Últimas rodadas"
         icon={<HistoryIcon className="size-4 text-primary" />}
-        tag="clique p/ verificar"
       />
       <HistoryBody
         data={data}
@@ -31,6 +46,43 @@ export function HistoryStrip({ className }: { className?: string }) {
         isError={isError}
         onVerify={setVerifyingRound}
       />
+
+      {data && data.total > ROUND_HISTORY_PAGE_SIZE && (
+        <Pagination className="mt-3">
+          <PaginationContent className="w-full justify-between">
+            <PaginationItem>
+              <PaginationPrevious
+                text="Anterior"
+                aria-disabled={!hasPrev}
+                className={cn(
+                  "cursor-pointer",
+                  !hasPrev && "pointer-events-none opacity-50",
+                )}
+                onClick={() =>
+                  hasPrev && setPage((current) => Math.max(1, current - 1))
+                }
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="px-2 text-xs tabular-nums text-muted-foreground">
+                {page} / {totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                text="Próxima"
+                aria-disabled={!hasNext}
+                className={cn(
+                  "cursor-pointer",
+                  !hasNext && "pointer-events-none opacity-50",
+                )}
+                onClick={() => hasNext && setPage((current) => current + 1)}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
       <RoundVerificationDialog
         roundNumber={verifyingRound}
         onOpenChange={(open) => !open && setVerifyingRound(null)}
@@ -68,7 +120,7 @@ function HistoryBody({
     );
   }
 
-  const points = data.flatMap((round) =>
+  const points = data.rounds.flatMap((round) =>
     round.crashPoint === null
       ? []
       : [

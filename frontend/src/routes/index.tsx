@@ -22,7 +22,7 @@ function Home() {
 
   return (
     <main className="flex min-h-screen justify-center p-3.5 sm:p-[22px]">
-      <div className="flex w-full max-w-[1180px] flex-col overflow-hidden rounded-shell border border-border bg-[#0b1113] shadow-shell">
+      <div className="flex w-full max-w-[1440px] flex-col overflow-hidden rounded-shell border border-border bg-[#0b1113] shadow-shell">
         <TopBar onLogout={handleLogout} />
         <GameBoard />
       </div>

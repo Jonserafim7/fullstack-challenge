@@ -5,6 +5,7 @@ import { RoundPhase } from "../round-contracts";
 import { formatMultiplier } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useRoundStore } from "../round-store";
+import { useSecondsUntil } from "../use-seconds-until";
 
 // The rising multiplier is drawn off React state (ADR-0006): a requestAnimationFrame loop
 // reads the live store via getState() and paints the curve, so the 60fps redraw never
@@ -18,10 +19,24 @@ const CRASHED_COLOR = "#f87171";
 const CRASH_FLASH_MS = 600;
 const CURVE_SAMPLES = 120;
 
+// Ambient glow, kept INSIDE the canvas box (clipped by its rounded overflow) so it never bleeds
+// into the panel chrome. Anchored centred behind the readout — lime while running, red on crash,
+// barely there while idle — so it reads as the stage's light rather than a stray blob.
+const LIVE_GLOW =
+  "radial-gradient(circle at 50% 54%, rgb(132 255 52 / 0.18), transparent 62%)";
+const CRASHED_GLOW =
+  "radial-gradient(circle at 50% 54%, rgb(255 54 83 / 0.20), transparent 62%)";
+const IDLE_GLOW =
+  "radial-gradient(circle at 50% 54%, rgb(132 255 52 / 0.06), transparent 62%)";
+
 export function MultiplierCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const readoutRef = useRef<HTMLSpanElement>(null);
   const phase = useRoundStore((state) => state.phase);
+  const bettingEndsAt = useRoundStore((state) => state.bettingEndsAt);
+  const secondsToClose = useSecondsUntil(
+    phase === RoundPhase.BETTING ? bettingEndsAt : null,
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -101,11 +116,20 @@ export function MultiplierCanvas() {
 
   const isTerminal =
     phase === RoundPhase.CRASHED || phase === RoundPhase.SETTLED;
-  const sub = subFor(phase);
+  const stageGlow = isTerminal
+    ? CRASHED_GLOW
+    : phase === RoundPhase.RUNNING
+      ? LIVE_GLOW
+      : IDLE_GLOW;
+  const sub = subFor({ phase, secondsToClose });
 
   return (
-    <div className="relative h-[clamp(260px,42vh,400px)] w-full overflow-hidden rounded-panel border border-border bg-black/25">
-      <canvas ref={canvasRef} className="h-full w-full" />
+    <div className="relative h-[clamp(260px,42vh,400px)] w-full overflow-hidden rounded-panel border border-border bg-black/40">
+      <div
+        className="pointer-events-none absolute inset-0 transition-[background] duration-500"
+        style={{ background: stageGlow }}
+      />
+      <canvas ref={canvasRef} className="relative h-full w-full" />
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
         <span
           ref={readoutRef}
@@ -132,9 +156,20 @@ export function MultiplierCanvas() {
   );
 }
 
-function subFor(phase: RoundPhase | null) {
-  if (phase === RoundPhase.BETTING)
-    return { Icon: ClockIcon, text: "Apostas abertas — aposte agora" };
+function subFor({
+  phase,
+  secondsToClose,
+}: {
+  phase: RoundPhase | null;
+  secondsToClose: number | null;
+}) {
+  if (phase === RoundPhase.BETTING) {
+    const timeText =
+      secondsToClose === null
+        ? "janela de apostas aberta"
+        : `fecha em ${secondsToClose.toFixed(1)}s`;
+    return { Icon: ClockIcon, text: `Apostas abertas — ${timeText}` };
+  }
   if (phase === RoundPhase.RUNNING)
     return { Icon: ZapIcon, text: "Saque antes do crash" };
   if (phase === RoundPhase.CRASHED || phase === RoundPhase.SETTLED)
@@ -172,6 +207,12 @@ function drawScene(
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  // Before the round starts (betting/idle) there's no curve to draw — only a degenerate point at
+  // the origin, which shows as a stray dot in the corner. Leave the canvas clean until it runs.
+  if (!isTerminal && drawnElapsedMs < 1) {
+    return;
+  }
 
   const padX = 16;
   const padY = 22;

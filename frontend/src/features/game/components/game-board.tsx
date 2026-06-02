@@ -14,7 +14,7 @@ export function GameBoard() {
   useRoundSocket();
 
   return (
-    <div className="flex flex-col gap-4 p-4 min-[900px]:grid min-[900px]:grid-cols-[2fr_1fr] min-[900px]:items-start">
+    <div className="flex flex-col gap-4 p-4 min-[900px]:grid min-[900px]:grid-cols-[3fr_2fr] min-[900px]:items-start">
       <div className="contents min-[900px]:flex min-[900px]:min-w-0 min-[900px]:flex-col min-[900px]:gap-4">
         <MultiplierStage className="order-1" />
         <HistoryStrip className="order-4" />

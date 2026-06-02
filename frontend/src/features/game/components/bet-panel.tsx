@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
-import { CircleDollarSignIcon, WalletIcon, ZapIcon } from "lucide-react";
+import { WalletIcon, ZapIcon } from "lucide-react";
 import { RoundPhase } from "../round-contracts";
 import { useRoundStore } from "../round-store";
 import { useBetStore, type ActiveBet } from "../bet-store";
@@ -28,7 +28,13 @@ const MAX_STAKE_CENTS = 100_000;
 // landed, so the refetch confirms rather than corrects the optimistic value.
 const BALANCE_RECONCILE_DELAY_MS = 2_000;
 
-const QUICK_STAKES = ["5,00", "10,00", "25,00", "100,00"];
+// Spread across the R$1–R$1.000 range (not clustered at the low end): ~0.5% / 5% / 25% / 100%.
+const QUICK_STAKES = [
+  { label: "R$ 5", value: "5,00" },
+  { label: "R$ 50", value: "50,00" },
+  { label: "R$ 250", value: "250,00" },
+  { label: "R$ 1.000", value: "1.000,00" },
+];
 
 interface WalletData {
   playerId: string;
@@ -247,11 +253,10 @@ function PlaceBetForm() {
       </label>
       <div
         className={cn(
-          "mt-1.5 flex items-center gap-2.5 rounded-2xl border bg-black/25 px-3 transition-colors focus-within:border-primary/50",
+          "mt-1.5 flex items-center gap-2 rounded-2xl border bg-black/25 px-3.5 transition-colors focus-within:border-primary/50",
           showRangeError ? "border-destructive/50" : "border-border",
         )}
       >
-        <CircleDollarSignIcon className="size-4 shrink-0 text-muted-foreground" />
         <span className="font-bold text-muted-foreground">R$</span>
         <input
           id="stake"
@@ -262,21 +267,21 @@ function PlaceBetForm() {
           aria-invalid={showRangeError}
           className="min-w-0 flex-1 bg-transparent py-2.5 text-base font-black tabular-nums text-white outline-none disabled:opacity-60"
         />
-        <span className="shrink-0 text-[11px] whitespace-nowrap text-muted-foreground/70">
-          mín R$1 / máx R$1.000
-        </span>
       </div>
+      <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+        mín R$ 1,00 / máx R$ 1.000,00
+      </p>
 
       <div className="mt-2.5 flex gap-2">
-        {QUICK_STAKES.map((value) => (
+        {QUICK_STAKES.map((quick) => (
           <button
-            key={value}
+            key={quick.value}
             type="button"
             disabled={!isBetting}
-            onClick={() => setStake(value)}
+            onClick={() => setStake(quick.value)}
             className="flex-1 rounded-lg border border-border bg-white/4 py-2 text-xs font-bold text-foreground transition-colors hover:bg-white/9 hover:text-white disabled:opacity-50"
           >
-            R$ {value}
+            {quick.label}
           </button>
         ))}
       </div>
