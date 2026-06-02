@@ -40,6 +40,7 @@
     "@types/pg": "^8.20.0",
     "bun-types": "latest",
     "prisma": "^7.8.0",
+    "socket.io-client": "^4.8.1",
     "typescript": "^5.8.3"
   }
 }
