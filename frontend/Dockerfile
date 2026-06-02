@@ -12,10 +12,17 @@ COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --ignore-scripts
 
 COPY frontend ./
-# The shared multiplier curve; resolves at ../packages/crash-curve/src from /app/frontend.
-# Its tsconfig extends the repo-root base, so that must sit at /app too (mirrors the layout).
+# The shared multiplier curve and provably-fair verification; resolve at ../packages/<name>/src
+# from /app/frontend. Their tsconfig extends the repo-root base, so that must sit at /app too.
 COPY packages/crash-curve /app/packages/crash-curve
+COPY packages/provably-fair /app/packages/provably-fair
 COPY tsconfig.base.json /app/tsconfig.base.json
+
+# provably-fair imports @noble/hashes at runtime. Its source is bundled from its own location, so
+# @noble must resolve from there — the frontend install above only populates /app/frontend/
+# node_modules, which is off the resolution path for /app/packages/*. Install the package's own
+# deps in place (this is what the root workspace install gives it locally).
+RUN cd /app/packages/provably-fair && bun install --ignore-scripts
 
 # VITE_* values are inlined at build time by Vite, so they must be present
 # before `bun run build`. Provided as build args (browser-facing localhost URLs).

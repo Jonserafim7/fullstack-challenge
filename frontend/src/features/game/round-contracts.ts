@@ -64,6 +64,19 @@ export interface CrashedEvent {
   verification: CrashVerification;
 }
 
+// The REST verification payload for a past Round (GET /games/rounds/:n/verify). Everything a
+// client needs to independently confirm the Round was fair: hash serverSeed to check it links to
+// previousSeed, then recompute the Crash Point from the seeds + house edge (ADR-0002). previousSeed
+// is null for Rounds recorded before the chain link was persisted.
+export interface RoundVerification {
+  roundNumber: number;
+  serverSeed: string;
+  previousSeed: string | null;
+  clientSeed: string;
+  houseEdge: number;
+  crashPoint: number;
+}
+
 export interface BetConfirmedEvent {
   betId: string;
   roundNumber: number;
