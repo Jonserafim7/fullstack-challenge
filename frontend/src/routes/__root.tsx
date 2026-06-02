@@ -8,6 +8,7 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { Auth } from "../lib/auth/auth";
 import { queryClient } from "../lib/query-client";
+import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles/app.css?url";
 
 export interface RouterContext {
@@ -35,6 +36,7 @@ function RootDocument() {
       <body className="bg-background text-foreground">
         <QueryClientProvider client={queryClient}>
           <Outlet />
+          <Toaster />
         </QueryClientProvider>
         <Scripts />
       </body>

@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth/auth";
 import { queryClient } from "@/lib/query-client";
 import { walletQueryKey } from "@/features/wallet";
 import { useBetStore } from "./bet-store";
+import { BetStatus } from "./bet-api";
+import { notifyBetRejected, notifyCrashedLost } from "./game-toasts";
 import { useParticipantsStore } from "./participants-store";
 import { betHistoryQueryKey } from "./bet-history-api";
 import { fetchCurrentRound, roundHistoryQueryKey } from "./round-api";
@@ -69,6 +71,14 @@ export function useRoundSocket(): void {
       // player's Confirmed bets just settled (Lost), so refresh their bet history too.
       void queryClient.invalidateQueries({ queryKey: roundHistoryQueryKey });
       void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
+      // The player was still holding a Confirmed bet when it crashed: they lost it — tell them.
+      const ownBet = useBetStore.getState().bet;
+      if (
+        ownBet?.roundNumber === event.roundNumber &&
+        ownBet.status === BetStatus.CONFIRMED
+      ) {
+        notifyCrashedLost({ crashPointHundredths: event.crashPoint });
+      }
     });
     socket.on(RoundEvent.BET_CONFIRMED, (event: BetConfirmedEvent) => {
       // Public event: every client sees who joined the Round, so add it to the live list (#9).
@@ -88,6 +98,7 @@ export function useRoundSocket(): void {
       // bet (no money moved, so the balance is unchanged — no refetch) and refresh their history.
       if (bet?.betId === event.betId) {
         reject(event.betId);
+        notifyBetRejected();
         void queryClient.invalidateQueries({ queryKey: betHistoryQueryKey });
       }
     });
