@@ -3,12 +3,15 @@ import {
   Body,
   ConflictException,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -19,6 +22,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
@@ -28,6 +32,7 @@ import { CashOutUnavailableError } from "../../application/errors/cash-out-unava
 import { InvalidStakeError } from "../../application/errors/invalid-stake.error";
 import { CashOutBetUseCase } from "../../application/use-cases/cash-out-bet.use-case";
 import { GetBetUseCase } from "../../application/use-cases/get-bet.use-case";
+import { GetBetHistoryUseCase } from "../../application/use-cases/get-bet-history.use-case";
 import { PlaceBetUseCase } from "../../application/use-cases/place-bet.use-case";
 import {
   CurrentPlayer,
@@ -36,6 +41,13 @@ import {
 import { JwtAuthGuard } from "../../infrastructure/auth/jwt-auth.guard";
 import { PlaceBetRequestDto } from "../dtos/place-bet-request.dto";
 import { BetResponseDto, toBetResponse } from "../dtos/bet-response.dto";
+import {
+  BetHistoryResponseDto,
+  toBetHistoryResponse,
+} from "../dtos/bet-history-response.dto";
+
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 20;
 
 // Kong strips the /games prefix, so these routes are POST /games/bet and GET /games/bets/:betId.
 @ApiTags("bets")
@@ -48,6 +60,7 @@ export class BetsController {
     private readonly placeBet: PlaceBetUseCase,
     private readonly cashOutBet: CashOutBetUseCase,
     private readonly getBet: GetBetUseCase,
+    private readonly getBetHistory: GetBetHistoryUseCase,
   ) {}
 
   @Post("bet")
@@ -116,6 +129,32 @@ export class BetsController {
       }
       throw error;
     }
+  }
+
+  @Get("bets/me")
+  @ApiOperation({ summary: "Paginated history of the caller's own Bets" })
+  @ApiQuery({ name: "page", required: false, example: 1 })
+  @ApiQuery({ name: "pageSize", required: false, example: DEFAULT_PAGE_SIZE })
+  @ApiOkResponse({ type: BetHistoryResponseDto })
+  async history(
+    @CurrentPlayer() playerId: string,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("pageSize", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    pageSize: number,
+  ): Promise<BetHistoryResponseDto> {
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
+    const { bets, total } = await this.getBetHistory.execute({
+      playerId,
+      page: safePage,
+      pageSize: safePageSize,
+    });
+    return toBetHistoryResponse({
+      bets,
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+    });
   }
 
   @Get("bets/:betId")

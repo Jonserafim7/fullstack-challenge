@@ -51,6 +51,7 @@ model Bet {
 
   @@unique([roundNumber, playerId])
   @@index([roundNumber])
+  @@index([playerId, createdAt])
   @@map("bet")
 }
 
