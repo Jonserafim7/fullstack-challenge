@@ -1,15 +1,6 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { auth } from "@/lib/auth/auth";
-import { BalanceCard } from "@/features/wallet";
-import { LiveRound, BetHistory } from "@/features/game";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { GameBoard, TopBar } from "@/features/game";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async ({ context }) => {
@@ -30,26 +21,10 @@ function Home() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <div className="w-full max-w-sm space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Crash Game</CardTitle>
-            <CardDescription>
-              Bem-vindo, {auth.username ?? "jogador"}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <BalanceCard />
-            <Button variant="outline" className="w-full" onClick={handleLogout}>
-              Sair
-            </Button>
-          </CardContent>
-        </Card>
-
-        <LiveRound />
-
-        <BetHistory />
+    <main className="flex min-h-screen justify-center p-3.5 sm:p-[22px]">
+      <div className="flex w-full max-w-[1180px] flex-col overflow-hidden rounded-shell border border-border bg-[#0b1113] shadow-shell">
+        <TopBar onLogout={handleLogout} />
+        <GameBoard />
       </div>
     </main>
   );
