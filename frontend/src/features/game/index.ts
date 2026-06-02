@@ -1,2 +1,2 @@
-export { LiveRound } from "./components/live-round";
-export { BetHistory } from "./components/bet-history";
+export { GameBoard } from "./components/game-board";
+export { TopBar } from "./components/top-bar";
