@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { auth } from "@/lib/auth/auth";
 import { BalanceCard } from "@/features/wallet";
-import { LiveRound } from "@/features/game";
+import { LiveRound, BetHistory } from "@/features/game";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,6 +48,8 @@ function Home() {
         </Card>
 
         <LiveRound />
+
+        <BetHistory />
       </div>
     </main>
   );
