@@ -65,6 +65,30 @@ export class PrismaBetRepository implements BetRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findByPlayer({
+    playerId,
+    limit,
+    offset,
+  }: {
+    playerId: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ bets: Bet[]; total: number }> {
+    const where = { playerId };
+    const [rows, total] = await Promise.all([
+      this.prisma.bet.findMany({
+        where,
+        // betId breaks ties on the non-unique createdAt so paging is stable (no row repeated or
+        // skipped across page boundaries when two bets share a timestamp).
+        orderBy: [{ createdAt: "desc" }, { betId: "desc" }],
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.bet.count({ where }),
+    ]);
+    return { bets: rows.map(toDomain), total };
+  }
+
   async cashOut({
     bet,
     payoutMessage,
