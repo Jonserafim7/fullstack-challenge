@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crash Game — wireframe (layout final)</title>
+<style>
+  /* casino tokens (subset, read-true low/mid-fi) */
+  :root{
+    --bg-deepest:#050908; --bg-shell:#0b1113; --bg-topbar:#141a1f;
+    --border:rgba(255,255,255,.10); --border-lime:rgba(132,255,52,.22);
+    --fg1:#fff; --fg2:#f1f5f9; --fg3:#cbd5e1; --fg-muted:#94a3b8; --fg-faint:#64748b;
+    --lime-400:#84ff34; --lime-300:#bef264; --lime-200:#d9f99d; --on-lime:#07100a;
+    --emerald-400:#34d399; --on-emerald:#06100b; --red-300:#fca5a5; --red-400:#f87171; --amber-300:#fcd34d; --cyan-200:#a5f3fc;
+    --radius:.625rem; --radius-lg:1rem; --radius-panel:1.5rem; --radius-shell:2rem;
+    --shadow-panel:0 20px 50px -12px rgba(0,0,0,.55); --shadow-shell:0 30px 80px -20px rgba(0,0,0,.7);
+    --glow-lime:0 12px 30px -8px rgba(132,255,52,.35); --glow-emerald:0 12px 30px -8px rgba(16,185,129,.35);
+    --font:ui-sans-serif,system-ui,"Segoe UI",sans-serif; --mono:ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{background:var(--bg-deepest);font-family:var(--font);color:var(--fg2);padding-bottom:60px}
+
+  /* toolbar */
+  .toolbar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:18px;align-items:center;
+    padding:12px 18px;background:rgba(7,11,10,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .toolbar .lbl{color:var(--fg-faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .seg{display:flex;border:1px solid var(--border);border-radius:99px;overflow:hidden}
+  .seg button{border:0;background:transparent;color:var(--fg-muted);font:inherit;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--lime-400);color:var(--on-lime)}
+  .toolbar .note{color:var(--fg-faint);font-size:11px;margin-left:auto}
+
+  /* frame (container-query responsive) */
+  .stage{display:flex;justify-content:center;padding:22px}
+  .frame{width:100%;max-width:1180px;container-type:inline-size;transition:max-width .25s}
+  #app[data-view="mobile"] .frame{max-width:390px}
+
+  /* shell + topbar */
+  .shell{border-radius:var(--radius-shell);border:1px solid var(--border);background:var(--bg-shell);box-shadow:var(--shadow-shell);overflow:hidden}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg-topbar)}
+  .brand{display:flex;align-items:center;gap:12px}
+  .mark{display:grid;place-items:center;width:44px;height:44px;border-radius:99px;border:4px solid var(--lime-400);
+    background:#16221c;color:var(--lime-400);font-size:18px;box-shadow:0 8px 20px -8px rgba(132,255,52,.3)}
+  .brand b{display:block;color:#fff;font-weight:900;font-size:15px}
+  .brand span{display:block;color:var(--lime-300);font-size:11px;font-weight:600;margin-top:3px}
+  .tr{display:flex;align-items:center;gap:10px}
+  /* saldo em destaque: o único lugar do saldo agora é o header */
+  .pill-wallet{display:flex;align-items:center;gap:8px;border-radius:99px;border:1px solid var(--border-lime);
+    background:rgba(132,255,52,.08);padding:9px 16px;color:#fff;font-weight:900;font-size:17px}
+  .pill-wallet small{color:var(--fg-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .chip-user{display:flex;align-items:center;gap:7px;border-radius:99px;background:rgba(255,255,255,.05);padding:8px 13px;color:var(--fg2);font-weight:600;font-size:13px}
+  .iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:99px;background:rgba(255,255,255,.05);color:var(--fg3);border:0;cursor:pointer}
+
+  /* board grid */
+  .board{display:flex;flex-direction:column;gap:16px;padding:16px}
+  @container (min-width:900px){
+    .board{display:grid;grid-template-columns:2fr 1fr;align-items:start}
+    .col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  }
+  @container (max-width:899px){
+    .col{display:contents}
+    /* mobile: jogo -> apostar/sacar -> apostas da rodada -> últimas rodadas -> minhas apostas */
+    .p-stage{order:1}.p-bet{order:2}.p-participants{order:3}.p-history{order:4}.p-bethist{order:5}
+  }
+
+  /* panels */
+  .panel{border-radius:var(--radius-panel);border:1px solid var(--border);background:rgba(18,27,32,.86);backdrop-filter:blur(10px);box-shadow:var(--shadow-panel);padding:18px}
+  .phead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .ptitle{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:900;font-size:14px}
+  .tag{border-radius:99px;background:rgba(255,255,255,.05);color:var(--fg-muted);font-size:10px;font-weight:700;padding:4px 9px;text-transform:uppercase;letter-spacing:.04em}
+  .hero-ring{border-color:var(--border-lime);box-shadow:var(--shadow-panel),0 0 0 1px rgba(132,255,52,.12)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:5px 12px;font-size:12px;font-weight:900}
+  .pill.live{background:rgba(132,255,52,.15);color:var(--lime-200)}
+  .pill.neutral{background:rgba(255,255,255,.08);color:var(--fg3)}
+  .dot{width:7px;height:7px;border-radius:99px;background:var(--lime-400);box-shadow:0 0 8px var(--lime-400)}
+
+  /* stage */
+  .stage-panel{position:relative;overflow:hidden}
+  .stage-bg{position:absolute;inset:0;background:radial-gradient(circle at 60% 42%,rgba(132,255,52,.16),transparent 38%),linear-gradient(180deg,rgba(29,38,54,.6),rgba(3,8,7,.95))}
+  .stage-inner{position:relative}
+  .stage-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .stage-top h1{margin:0;color:#fff;font-weight:900;font-size:clamp(18px,3vw,24px)}
+  /* commitment no board: única superfície de transparência provably-fair na tela */
+  .commit{margin-top:7px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-lime);background:rgba(132,255,52,.05);
+    border-radius:99px;padding:5px 11px;color:var(--lime-200);font-family:var(--mono);font-size:11px}
+  .stage-pills{display:flex;gap:8px;flex-wrap:wrap;align-content:flex-start}
+  .canvas{position:relative;margin-top:16px;border-radius:var(--radius-panel);border:1px solid var(--border);background:rgba(0,0,0,.25);height:clamp(260px,42vh,400px);display:grid;place-items:center}
+  .readout{font-weight:900;font-size:clamp(54px,10vw,104px);color:#f8fafc;text-shadow:0 0 36px rgba(132,255,52,.4)}
+  .sub{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:inline-flex;gap:7px;border:1px solid var(--border);background:rgba(0,0,0,.4);border-radius:99px;padding:8px 15px;color:var(--fg2);font-size:13px;font-weight:600;white-space:nowrap}
+
+  /* participants */
+  .rows{display:flex;flex-direction:column;gap:8px}
+  .prow{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:var(--radius-lg);background:rgba(0,0,0,.2);padding:10px 12px}
+  .who{display:flex;align-items:center;gap:11px;min-width:0}
+  .av{display:grid;place-items:center;width:34px;height:34px;border-radius:99px;font-size:12px;font-weight:900}
+  .av.self{background:var(--lime-400);color:var(--on-lime)} .av.other{background:rgba(255,255,255,.08);color:var(--fg2)}
+  .nm{color:#fff;font-weight:700;font-size:14px} .amt{color:var(--fg-faint);font-size:12px}
+  .st{font-size:12px;font-weight:700} .st.won{color:var(--lime-300)} .st.self{color:var(--cyan-200)} .st.pending{color:var(--fg-faint)}
+
+  /* bet (hero) */
+  .active-bet{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:var(--radius-lg);background:rgba(0,0,0,.22);padding:12px 14px;margin-bottom:10px}
+  .active-bet .l{color:var(--fg-muted);font-size:12px} .active-bet .v{color:var(--lime-300);font-weight:900}
+  .cta{width:100%;height:56px;border:0;border-radius:1.25rem;font-weight:900;font-size:17px;display:grid;place-items:center;gap:6px}
+  .cta.cash{background:var(--emerald-400);color:var(--on-emerald);box-shadow:var(--glow-emerald)}
+  .cta.bet{background:var(--lime-400);color:var(--on-lime);box-shadow:var(--glow-lime)}
+  .betnote{margin-top:10px;color:var(--fg-faint);font-size:11px;line-height:1.5}
+
+  /* history */
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .hchip{border-radius:99px;padding:6px 13px;font-size:13px;font-weight:900}
+  .hchip.low{background:rgba(248,113,113,.15);color:var(--red-300)}
+  .hchip.mid{background:rgba(52,211,153,.15);color:var(--emerald-400)}
+  .hchip.high{background:rgba(251,191,36,.2);color:var(--amber-300)}
+  .hhint{margin-top:10px;color:var(--fg-faint);font-size:11px}
+
+  /* minhas apostas */
+  .bhrow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .bhrow .r{color:var(--fg-muted)} .bhrow .won{color:var(--emerald-400);font-weight:700} .bhrow .lost{color:var(--red-300)}
+  .pager{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+  .pager span{border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;color:var(--fg3);font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app" data-view="desktop">
+  <div class="toolbar">
+    <span class="lbl">Viewport</span>
+    <div class="seg" id="view">
+      <button data-w="desktop" aria-pressed="true">Desktop</button>
+      <button data-w="mobile" aria-pressed="false">Mobile</button>
+    </div>
+    <span class="note">wireframe · snapshot da fase "rodada subindo" · dados são placeholders</span>
+  </div>
+
+  <div class="stage">
+    <div class="frame">
+      <div class="shell">
+        <!-- HEADER: saldo em destaque (único lugar do saldo) -->
+        <header class="topbar">
+          <div class="brand"><div class="mark">⚡</div><div><b>Crash Game</b><span>rodada em tempo real</span></div></div>
+          <div class="tr">
+            <div class="pill-wallet"><small>Saldo</small> 💲 R$ 1.240,00</div>
+            <div class="chip-user">👤 player</div>
+            <button class="iconbtn">⎋</button>
+          </div>
+        </header>
+
+        <div class="board">
+          <!-- ESQUERDA = a rodada: jogo + últimas rodadas -->
+          <div class="col">
+            <section class="panel stage-panel p-stage">
+              <div class="stage-bg"></div>
+              <div class="stage-inner">
+                <div class="stage-top">
+                  <div>
+                    <h1>Rodada #128</h1>
+                    <div class="commit">🛡 commitment 9f2a3c7e1b4d…</div>
+                  </div>
+                  <div class="stage-pills">
+                    <span class="pill live"><span class="dot"></span>ao vivo</span>
+                    <span class="pill live">cash out liberado</span>
+                  </div>
+                </div>
+                <div class="canvas"><span class="readout">2.41x</span><span class="sub">⚡ saque antes do crash</span></div>
+              </div>
+            </section>
+
+            <section class="panel p-history">
+              <div class="phead"><span class="ptitle">🕓 Últimas rodadas</span><span class="tag">clique p/ verificar</span></div>
+              <div class="chips">
+                <span class="hchip low">1.12x</span><span class="hchip mid">2.41x</span><span class="hchip mid">8.30x</span>
+                <span class="hchip low">1.04x</span><span class="hchip mid">3.72x</span><span class="hchip high">12.9x</span>
+                <span class="hchip low">1.51x</span><span class="hchip mid">4.05x</span><span class="hchip low">1.88x</span><span class="hchip mid">6.20x</span>
+              </div>
+              <div class="hhint">Cada chip abre a verificação provably-fair (recalculada no seu navegador).</div>
+            </section>
+          </div>
+
+          <!-- DIREITA = apostas: apostar/sacar -> rodada atual -> minhas apostas -->
+          <div class="col">
+            <section class="panel hero-ring p-bet">
+              <div class="phead"><span class="ptitle">⚡ Sua aposta</span></div>
+              <div class="active-bet"><span class="l">R$ 10,00</span><span class="v">Confirmada</span></div>
+              <button class="cta cash">💲 Sacar R$ 24,10</button>
+            </section>
+
+            <section class="panel p-participants">
+              <div class="phead"><span class="ptitle">👥 Apostas da rodada atual</span><span class="tag">ao vivo</span></div>
+              <div class="rows">
+                <div class="prow"><div class="who"><div class="av self">VC</div><div><div class="nm">Você</div><div class="amt">R$ 10,00</div></div></div><span class="st self">na rodada</span></div>
+                <div class="prow"><div class="who"><div class="av other">AN</div><div><div class="nm">Ana Lima</div><div class="amt">R$ 25,00</div></div></div><span class="st won">sacou 2.10x</span></div>
+                <div class="prow"><div class="who"><div class="av other">BR</div><div><div class="nm">Bruno Sá</div><div class="amt">R$ 15,00</div></div></div><span class="st pending">na rodada</span></div>
+                <div class="prow"><div class="who"><div class="av other">NK</div><div><div class="nm">Nikol G.</div><div class="amt">R$ 40,00</div></div></div><span class="st pending">na rodada</span></div>
+              </div>
+            </section>
+
+            <section class="panel p-bethist">
+              <div class="phead"><span class="ptitle">🧾 Minhas apostas</span></div>
+              <div class="bhrow"><span class="r">Rodada #127</span><span class="won">R$10 · sacou 2.10x (+R$21)</span></div>
+              <div class="bhrow"><span class="r">Rodada #126</span><span class="lost">R$25 · perdeu</span></div>
+              <div class="bhrow"><span class="r">Rodada #125</span><span class="won">R$50 · sacou 8.30x (+R$415)</span></div>
+              <div class="pager"><span>‹ Anterior</span><span>1 / 3</span><span>Próxima ›</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const app = document.getElementById('app');
+  document.getElementById('view').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    app.dataset.view=b.dataset.w;
+    e.currentTarget.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.w===b.dataset.w)));
+  });
+</script>
+</body>
+</html>
