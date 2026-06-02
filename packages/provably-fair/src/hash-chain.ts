@@ -1,4 +1,5 @@
-import { createHash, randomBytes } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, randomBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 
 export const DEFAULT_CHAIN_LENGTH = 100_000;
 
@@ -9,7 +10,7 @@ export interface HashChain {
 }
 
 function sha256Hex(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
+  return bytesToHex(sha256(utf8ToBytes(value)));
 }
 
 // Pre-generates a server-seed chain backward from a random terminal seed:
@@ -28,7 +29,7 @@ export function createHashChain(options?: {
   }
 
   const seeds = new Array<string>(length + 1);
-  seeds[length] = options?.terminalSeed ?? randomBytes(32).toString("hex");
+  seeds[length] = options?.terminalSeed ?? bytesToHex(randomBytes(32));
   for (let round = length; round > 0; round--) {
     seeds[round - 1] = sha256Hex(seeds[round]);
   }

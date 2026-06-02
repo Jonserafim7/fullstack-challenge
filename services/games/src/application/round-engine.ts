@@ -5,12 +5,12 @@ import {
   OnModuleDestroy,
 } from "@nestjs/common";
 import { elapsedMsToReach } from "@crash/crash-curve";
-import { Round, RoundPhase } from "../domain/entities/round";
 import {
   createHashChain,
   deriveCrashPointHundredths,
   type HashChain,
-} from "../domain/provably-fair";
+} from "@crash/provably-fair";
+import { Round, RoundPhase } from "../domain/entities/round";
 import { EnvService } from "../infrastructure/env/env.service";
 import { RoundEventPublisher } from "./realtime/round-event-publisher";
 import { RoundRepository } from "./repositories/round.repository";
@@ -101,6 +101,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
       serverSeed,
       clientSeed,
       houseEdge,
+      seedHash: this.seedHashFor(roundNumber),
       bettingEndsAt: new Date(Date.now() + bettingDurationMs),
     });
 

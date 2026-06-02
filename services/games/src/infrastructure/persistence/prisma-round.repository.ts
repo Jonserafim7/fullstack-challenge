@@ -10,6 +10,7 @@ interface RoundRow {
   serverSeed: string;
   clientSeed: string;
   houseEdge: number;
+  seedHash: string | null;
   bettingEndsAt: Date | null;
   startedAt: Date | null;
   crashedAt: Date | null;
@@ -39,6 +40,11 @@ export class PrismaRoundRepository implements RoundRepository {
     const row = await this.prisma.round.findFirst({
       orderBy: { roundNumber: "desc" },
     });
+    return row ? toDomain(row) : null;
+  }
+
+  async findByNumber(roundNumber: number): Promise<Round | null> {
+    const row = await this.prisma.round.findUnique({ where: { roundNumber } });
     return row ? toDomain(row) : null;
   }
 
@@ -78,6 +84,7 @@ function toDomain(row: RoundRow): Round {
     serverSeed: row.serverSeed,
     clientSeed: row.clientSeed,
     houseEdge: row.houseEdge,
+    seedHash: row.seedHash,
     phase: row.phase as RoundPhase,
     bettingEndsAt: row.bettingEndsAt,
     startedAt: row.startedAt,
@@ -93,6 +100,7 @@ function toPersistence(round: Round): RoundRow {
     serverSeed: round.serverSeed,
     clientSeed: round.clientSeed,
     houseEdge: round.houseEdge,
+    seedHash: round.seedHash,
     bettingEndsAt: round.bettingEndsAt,
     startedAt: round.startedAt,
     crashedAt: round.crashedAt,

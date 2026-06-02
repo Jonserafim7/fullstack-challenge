@@ -20,6 +20,7 @@ export class Round {
     public readonly serverSeed: string,
     public readonly clientSeed: string,
     public readonly houseEdge: number,
+    public readonly seedHash: string | null,
     private currentPhase: RoundPhase,
     private bettingDeadline: Date | null,
     private runningStartedAt: Date | null,
@@ -32,6 +33,7 @@ export class Round {
     serverSeed,
     clientSeed,
     houseEdge,
+    seedHash,
     bettingEndsAt,
   }: {
     roundNumber: number;
@@ -39,6 +41,7 @@ export class Round {
     serverSeed: string;
     clientSeed: string;
     houseEdge: number;
+    seedHash: string;
     bettingEndsAt: Date;
   }): Round {
     return new Round(
@@ -47,6 +50,7 @@ export class Round {
       serverSeed,
       clientSeed,
       houseEdge,
+      seedHash,
       RoundPhase.BETTING,
       bettingEndsAt,
       null,
@@ -60,6 +64,7 @@ export class Round {
     serverSeed,
     clientSeed,
     houseEdge,
+    seedHash,
     phase,
     bettingEndsAt,
     startedAt,
@@ -70,6 +75,7 @@ export class Round {
     serverSeed: string;
     clientSeed: string;
     houseEdge: number;
+    seedHash: string | null;
     phase: RoundPhase;
     bettingEndsAt: Date | null;
     startedAt: Date | null;
@@ -81,6 +87,7 @@ export class Round {
       serverSeed,
       clientSeed,
       houseEdge,
+      seedHash,
       phase,
       bettingEndsAt,
       startedAt,

@@ -10,7 +10,7 @@ import type { RoundRepository } from "../../src/application/repositories/round.r
 import type { SettleRoundUseCase } from "../../src/application/use-cases/settle-round.use-case";
 import type { VoidPendingBetsUseCase } from "../../src/application/use-cases/void-pending-bets.use-case";
 import type { EnvService } from "../../src/infrastructure/env/env.service";
-import { createHashChain } from "../../src/domain/provably-fair";
+import { createHashChain } from "@crash/provably-fair";
 
 const TERMINAL_SEED = "a".repeat(64);
 const CHAIN_LENGTH = 10;
@@ -41,6 +41,7 @@ function buildEngine(maxRoundNumber: number): {
   const rounds = {
     save: async () => {},
     findCurrent: async () => null,
+    findByNumber: async () => null,
     findHistory: async () => ({ rounds: [], total: 0 }),
     maxRoundNumber: async () => maxRoundNumber,
   } as RoundRepository;

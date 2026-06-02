@@ -35,6 +35,7 @@ function runningRound({
     serverSeed: "s",
     clientSeed: "c",
     houseEdge: 0.01,
+    seedHash: "h",
     phase: RoundPhase.RUNNING,
     bettingEndsAt: new Date(),
     startedAt: new Date(Date.now() - startedAtMsAgo),
@@ -161,6 +162,7 @@ describe("CashOutBet", () => {
       serverSeed: "s",
       clientSeed: "c",
       houseEdge: 0.01,
+      seedHash: "h",
       bettingEndsAt: new Date(),
     });
     const bet = confirmedBet();

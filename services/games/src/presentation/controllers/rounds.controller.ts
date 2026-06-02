@@ -1,25 +1,34 @@
 import {
+  ConflictException,
   Controller,
   DefaultValuePipe,
   Get,
   NotFoundException,
+  Param,
   ParseIntPipe,
   Query,
 } from "@nestjs/common";
 import {
+  ApiConflictResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { RoundNotVerifiableError } from "../../application/errors/round-not-verifiable.error";
 import { GetCurrentRoundUseCase } from "../../application/use-cases/get-current-round.use-case";
 import { GetRoundHistoryUseCase } from "../../application/use-cases/get-round-history.use-case";
+import { GetRoundVerificationUseCase } from "../../application/use-cases/get-round-verification.use-case";
 import {
   RoundHistoryResponseDto,
   toRoundHistoryResponse,
 } from "../dtos/round-history-response.dto";
 import { RoundResponseDto, toRoundResponse } from "../dtos/round-response.dto";
+import {
+  RoundVerificationResponseDto,
+  toRoundVerificationResponse,
+} from "../dtos/round-verification-response.dto";
 
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 20;
@@ -32,6 +41,7 @@ export class RoundsController {
   constructor(
     private readonly getCurrentRound: GetCurrentRoundUseCase,
     private readonly getRoundHistory: GetRoundHistoryUseCase,
+    private readonly getRoundVerification: GetRoundVerificationUseCase,
   ) {}
 
   @Get("rounds/current")
@@ -68,5 +78,34 @@ export class RoundsController {
       page: safePage,
       pageSize: safePageSize,
     });
+  }
+
+  @Get("rounds/:roundNumber/verify")
+  @ApiOperation({
+    summary: "Provably-fair verification data for a past Round",
+    description:
+      "Returns the revealed Server Seed, the Commitment it chains to (previousSeed), the Client Seed, the house edge, and the Crash Point, so anyone can confirm SHA256(serverSeed) == previousSeed and recompute the Crash Point (ADR-0002).",
+  })
+  @ApiOkResponse({ type: RoundVerificationResponseDto })
+  @ApiNotFoundResponse({ description: "No such Round." })
+  @ApiConflictResponse({
+    description:
+      "The Round has not crashed yet; its Server Seed is not revealed.",
+  })
+  async verify(
+    @Param("roundNumber", ParseIntPipe) roundNumber: number,
+  ): Promise<RoundVerificationResponseDto> {
+    try {
+      const round = await this.getRoundVerification.execute({ roundNumber });
+      if (!round) {
+        throw new NotFoundException(`No Round ${roundNumber}`);
+      }
+      return toRoundVerificationResponse(round);
+    } catch (error) {
+      if (error instanceof RoundNotVerifiableError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
   }
 }

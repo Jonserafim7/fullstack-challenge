@@ -16,6 +16,7 @@
     "@crash/crash-curve": "workspace:*",
     "@crash/messaging": "workspace:*",
     "@crash/money": "workspace:*",
+    "@crash/provably-fair": "workspace:*",
     "@golevelup/nestjs-rabbitmq": "^5.7.0",
     "@nestjs/common": "^11.1.17",
     "@nestjs/config": "^4.0.2",
