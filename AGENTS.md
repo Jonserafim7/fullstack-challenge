@@ -4,7 +4,7 @@ This file provides guidance to coding agents (Claude Code, Codex, etc.) when wor
 
 ## What this is
 
-A take-home challenge to build a real-time multiplayer **Crash Game** (casino-style: a multiplier rises from `1.00x` and "crashes" at a pre-determined point; players bet before the round and must cash out before the crash). Read `README.md` for the full spec, game rules, evaluation criteria, and bonus features — it is the source of truth for requirements.
+A take-home challenge to build a real-time multiplayer **Crash Game** (casino-style: a multiplier rises from `1.00x` and "crashes" at a pre-determined point; players bet before the round and must cash out before the crash). Read [`docs/CHALLENGE.md`](./docs/CHALLENGE.md) for the full spec, game rules, evaluation criteria, and bonus features — it is the original challenge brief, preserved verbatim, and the source of truth for requirements. The root [`README.md`](./README.md) documents what was actually delivered (setup, architecture, trade-offs).
 
 This repo is a **fork** of `junglegaming/fullstack-challenge`. Remotes: `origin` → your fork (the public deliverable), `upstream` → the original challenge repo. Push work to `origin`; pull upstream only if the challenge is updated.
 
@@ -65,11 +65,11 @@ src/
 
 ### Kong path stripping (important)
 
-Kong routes `/games/*` and `/wallets/*` with `strip_path: true` (`docker/kong/kong.yml`). The prefix is removed before reaching the service, so controllers define routes **without** the `/games` or `/wallets` prefix. Example: `GET /games/health` via Kong maps to `@Get("health")` in the controller. The README's API table lists the public (Kong) paths; subtract the prefix when writing controllers.
+Kong routes `/games/*` and `/wallets/*` with `strip_path: true` (`docker/kong/kong.yml`). The prefix is removed before reaching the service, so controllers define routes **without** the `/games` or `/wallets` prefix. Example: `GET /games/health` via Kong maps to `@Get("health")` in the controller. The challenge's API table ([`docs/CHALLENGE.md`](./docs/CHALLENGE.md)) lists the public (Kong) paths; subtract the prefix when writing controllers.
 
 ## Non-negotiable constraints
 
-These come from the README's elimination/disqualification criteria — violating them fails the challenge:
+These come from the challenge's elimination/disqualification criteria ([`docs/CHALLENGE.md`](./docs/CHALLENGE.md)) — violating them fails the challenge:
 
 - **Never use floating point for money.** Use integer cents (`BIGINT`), `NUMERIC`, or a Decimal library. Balance must never go negative.
 - **`bun run docker:up` must bring up the entire stack with no manual steps** — Keycloak realm import, Kong config, and DB migrations all automatic.
