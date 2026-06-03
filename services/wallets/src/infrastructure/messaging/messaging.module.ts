@@ -41,7 +41,7 @@ import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
             routingKey: DeadLetterRoutingKey.WALLETS,
             options: { durable: true },
           },
-          // Delay queue for backoff retries (#7): a transiently-failed message is parked here under
+          // Delay queue for backoff retries: a transiently-failed message is parked here under
           // `retry.wallets` with a per-message TTL; when it expires the queue dead-letters it back to
           // crash.events under `redeliver.wallets`, which wallets.inbox also binds. Never consumed.
           {

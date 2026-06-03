@@ -44,7 +44,7 @@ import { OutboxRelay } from "./outbox-relay";
             routingKey: DeadLetterRoutingKey.GAMES,
             options: { durable: true },
           },
-          // Delay queue for backoff retries (#7): a transiently-failed message is parked here under
+          // Delay queue for backoff retries: a transiently-failed message is parked here under
           // `retry.games` with a per-message TTL; when it expires the queue dead-letters it back to
           // crash.events under `redeliver.games`, which games.inbox also binds. Never consumed.
           {

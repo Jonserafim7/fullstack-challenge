@@ -1,12 +1,10 @@
 import { create } from "zustand";
 import type { BetCashedOutEvent, BetConfirmedEvent } from "./round-contracts";
 
-// Everyone in the current Round, built from the public bet.confirmed / bet.cashed_out broadcasts
-// (#9). Read-only presence — distinct from bet-store, which tracks only the client's own Bet for
-// the bet/cash-out panel. Keyed by betId so a cash-out updates the same row its confirmation
-// created (ADR-0006: Zustand for live, WebSocket-driven state). The list only ever shows the Round
-// in progress: BETTING_OPENED clears it on turnover, and every event carries its roundNumber so the
-// first event of a new round also resets it — covering a reconnect that missed BETTING_OPENED.
+// Everyone in the current Round, from the public bet.confirmed / bet.cashed_out broadcasts. Keyed
+// by betId so a cash-out updates the same row its confirmation created. The list only ever shows the
+// Round in progress: BETTING_OPENED clears it, and every event carries its roundNumber so the first
+// event of a new round also resets it — covering a reconnect that missed BETTING_OPENED.
 export interface Participant {
   betId: string;
   username: string;

@@ -7,7 +7,7 @@ export const OutboxStatus = {
   PUBLISHED: "PUBLISHED",
   // Terminal: a non-credit row that exhausted its publish attempts. It stops draining and is left
   // visible for inspection instead of lingering as an invisible PENDING. Credits (payout, refund)
-  // are never abandoned (ADR-0001), so they never reach FAILED (#7).
+  // are never abandoned (ADR-0001), so they never reach FAILED.
   FAILED: "FAILED",
 } as const;
 export type OutboxStatus = (typeof OutboxStatus)[keyof typeof OutboxStatus];

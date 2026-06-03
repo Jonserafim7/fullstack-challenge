@@ -8,11 +8,8 @@ export const RoundPhase = {
 } as const;
 export type RoundPhase = (typeof RoundPhase)[keyof typeof RoundPhase];
 
-// The Round aggregate and its state machine. The Crash Point and seeds are decided when the
-// Round opens and never change; only the phase and its timestamps advance:
-//   Betting -> Running -> Crashed -> Settled
-// Any out-of-order transition throws. This type is pure (no ORM, no timers): the engine owns
-// the clock and persistence; the Round only owns the rules.
+// State machine Betting -> Running -> Crashed -> Settled; any out-of-order transition throws. Pure
+// (no ORM, no timers): the engine owns the clock and persistence, the Round owns only the rules.
 export class Round {
   private constructor(
     public readonly roundNumber: number,

@@ -7,10 +7,8 @@ import { DuplicateMessageError } from "../errors/duplicate-message.error";
 import { InboxStore } from "../messaging/inbox-store";
 import { RoundEventPublisher } from "../realtime/round-event-publisher";
 
-// Applies a `bet.debit-rejected` reply exactly once (ADR-0001): the inbox marks the Bet Rejected
-// and records the dedup key in one transaction; a redelivery hits the inbox primary key, surfaces
-// as DuplicateMessageError, and is swallowed as a no-op. Only after the transition commits does it
-// notify the owning player privately (the refusal reveals their funds, so it never broadcasts).
+// Applies a bet.debit-rejected reply exactly once (ADR-0001), then notifies the owning player
+// privately — the refusal reveals their funds, so it never broadcasts.
 @Injectable()
 export class RejectBetUseCase {
   private readonly logger = new Logger(RejectBetUseCase.name);

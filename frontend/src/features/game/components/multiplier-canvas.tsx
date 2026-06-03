@@ -7,21 +7,16 @@ import { cn } from "@/lib/utils";
 import { useRoundStore } from "../round-store";
 import { useSecondsUntil } from "../use-seconds-until";
 
-// The rising multiplier is drawn off React state (ADR-0006): a requestAnimationFrame loop
-// reads the live store via getState() and paints the curve, so the 60fps redraw never
-// re-renders React. The curve is m(t) from @crash/crash-curve — the same growth function the
-// games engine uses to time each Crash, so the drawn line can never drift from the backend
-// (ADR-0003). It anchors at round.running and snaps to the authoritative Crash Point on
-// round.crashed.
+// Drawn off React state (ADR-0006): a requestAnimationFrame loop reads the store via getState() and
+// paints, so the 60fps redraw never re-renders React. The curve is m(t) from @crash/crash-curve, the
+// same function the engine uses to time each Crash, so the line can never drift from the backend.
 
 const RISING_COLOR = "#34d399";
 const CRASHED_COLOR = "#f87171";
 const CRASH_FLASH_MS = 600;
 const CURVE_SAMPLES = 120;
 
-// Ambient glow, kept INSIDE the canvas box (clipped by its rounded overflow) so it never bleeds
-// into the panel chrome. Anchored centred behind the readout — lime while running, red on crash,
-// barely there while idle — so it reads as the stage's light rather than a stray blob.
+// Ambient glow behind the readout: lime while running, red on crash, faint while idle.
 const LIVE_GLOW =
   "radial-gradient(circle at 50% 54%, rgb(132 255 52 / 0.18), transparent 62%)";
 const CRASHED_GLOW =

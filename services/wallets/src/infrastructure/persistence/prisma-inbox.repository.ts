@@ -47,10 +47,8 @@ export class PrismaInboxRepository implements InboxStore {
     await this.prisma.$transaction(async (tx) => {
       await this.recordKey(tx, { messageKey, type });
 
-      // Debit atomically so concurrent debits on the same wallet cannot lose an update: the
-      // conditional UPDATE takes a row lock and re-checks the balance, and the `gte` guard is the
-      // balance-never-negative invariant enforced at the row. A redelivery of the same betId is
-      // already a no-op via the inbox key above; this guards the distinct-betId same-wallet race.
+      // Conditional UPDATE with a row lock: the `gte` guard is the balance-never-negative invariant
+      // at the row, and it makes concurrent debits on the same wallet safe.
       const amount = BigInt(stakeCents);
       const { count } = await tx.wallet.updateMany({
         where: { playerId, balance: { gte: amount } },
@@ -61,10 +59,8 @@ export class PrismaInboxRepository implements InboxStore {
         return;
       }
 
-      // No row was debited: either funds fell short or the wallet is missing. A missing wallet is a
-      // genuine anomaly (every player is seeded one) — throw so it retries and, if it persists,
-      // dead-letters for inspection. Insufficient funds is a normal outcome — enqueue the rejection
-      // reply in this same transaction so the dedup key and the reply commit together (#7).
+      // No row debited: a missing wallet is an anomaly (throw, so it retries/dead-letters);
+      // insufficient funds is a normal outcome, so enqueue the rejection reply in this transaction.
       const wallet = await tx.wallet.findUnique({
         where: { playerId },
         select: { playerId: true },
@@ -90,9 +86,8 @@ export class PrismaInboxRepository implements InboxStore {
     await this.prisma.$transaction(async (tx) => {
       await this.recordKey(tx, { messageKey, type });
 
-      // Credit unconditionally (ADR-0001) — no balance guard, unlike a debit. The increment takes a
-      // row lock, so concurrent credits/debits on the same wallet cannot lose an update; a redelivery
-      // of the same payout is already a no-op via the inbox key above.
+      // Credit unconditionally (ADR-0001) — no balance guard. The increment's row lock keeps
+      // concurrent credits/debits on the same wallet safe.
       const { count } = await tx.wallet.updateMany({
         where: { playerId },
         data: { balance: { increment: BigInt(amountCents) } },
@@ -103,9 +98,8 @@ export class PrismaInboxRepository implements InboxStore {
     });
   }
 
-  // The dedup is the inbox primary key alone. Scoping the duplicate check to this insert means a
-  // unique-constraint failure elsewhere in the transaction (a real anomaly) propagates instead of
-  // being mistaken for a redelivery and silently swallowed.
+  // Scope the duplicate check to this insert so a unique-constraint failure elsewhere in the
+  // transaction (a real anomaly) propagates instead of being mistaken for a redelivery.
   private async recordKey(
     tx: Prisma.TransactionClient,
     { messageKey, type }: { messageKey: string; type: string },

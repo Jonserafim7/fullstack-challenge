@@ -47,9 +47,8 @@ interface RoundState {
   applyCrashed: (event: CrashedEvent) => void;
 }
 
-// Live Round state seeded by the REST snapshot on connect, then advanced by WebSocket deltas
-// (ADR-0006: Zustand for WebSocket-pushed live state). The multiplier curve is not kept here —
-// it is a cosmetic client-side function of time, rendered on a canvas in a later slice (#13).
+// Live Round state seeded by the REST snapshot, then advanced by WebSocket deltas (ADR-0006). The
+// multiplier curve is not kept here — it is a cosmetic client-side function of time on the canvas.
 export const useRoundStore = create<RoundState>((set) => ({
   connection: "connecting",
   roundNumber: null,

@@ -2,9 +2,8 @@ import { Bet } from "../../domain/entities/bet";
 import { NewOutboxMessage } from "../messaging/outbox-store";
 
 export abstract class BetRepository {
-  // Persists a freshly placed Pending Bet and enqueues its debit command in ONE transaction, so a
-  // bet never exists without its debit on the way (ADR-0001's no-dual-write guarantee). Throws
-  // BetAlreadyPlacedError if the player already has a Bet on that Round.
+  // Persists the Pending Bet and its debit command in ONE transaction (ADR-0001, no dual write).
+  // Throws BetAlreadyPlacedError if the player already has a Bet on that Round.
   abstract place(args: {
     bet: Bet;
     debitMessage: NewOutboxMessage;
@@ -17,16 +16,14 @@ export abstract class BetRepository {
     playerId: string;
   }): Promise<Bet | null>;
 
-  // A page of the player's own Bets, newest first, for their history view (#9). Returns the page
-  // and the total count so the caller can paginate. Mirrors RoundRepository.findHistory.
+  // A page of the player's own Bets, newest first, with the total count for pagination.
   abstract findByPlayer(args: {
     playerId: string;
     limit: number;
     offset: number;
   }): Promise<{ bets: Bet[]; total: number }>;
 
-  // Persists the Cashed Out transition and enqueues the payout credit in ONE transaction, so a bet
-  // never becomes Cashed Out without its payout on the way (ADR-0001's no-dual-write guarantee).
+  // Persists the Cashed Out transition and its payout credit in ONE transaction (ADR-0001).
   abstract cashOut(args: {
     bet: Bet;
     payoutMessage: NewOutboxMessage;

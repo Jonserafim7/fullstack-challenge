@@ -9,13 +9,12 @@ export const envSchema = z.object({
   RABBITMQ_URL: z.string().url(),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(500),
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-  // Inbox retry backoff before the DLQ (#7, ADR-0001): a transiently-failed message is retried with
+  // Inbox retry backoff before the DLQ (ADR-0001): a transiently-failed message is retried with
   // an exponentially growing delay (base × 2^attempt) and dead-lettered after this many attempts.
   INBOX_RETRY_BASE_MS: z.coerce.number().int().positive().default(1000),
   INBOX_RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 
-  // Auth: validate the token issuer, fetch signing keys from the IdP. The games
-  // WebSocket gateway validates the JWT on connect (ADR-0003).
+  // Auth: token issuer + JWKS endpoint for validating Keycloak JWTs (ADR-0003).
   KEYCLOAK_ISSUER: z.string().url(),
   KEYCLOAK_JWKS_URI: z.string().url(),
 
@@ -31,10 +30,8 @@ export const envSchema = z.object({
   BETTING_DURATION_MS: z.coerce.number().int().positive().default(5000),
   CRASHED_DISPLAY_MS: z.coerce.number().int().positive().default(3000),
 
-  // Test-only. When set (e.g. "500,150,1000"), the engine uses this cyclic sequence of Crash Points
-  // (integer hundredths) instead of deriving them from the provably-fair chain, making each Round's
-  // outcome reproducible for E2E. Unset in production and dev, so the Crash Point stays provably-fair
-  // (ADR-0002). Enabled via docker-compose.e2e.yml.
+  // Test-only (docker-compose.e2e.yml). A cyclic sequence of Crash Points in hundredths (e.g.
+  // "500,150,1000") that scripts E2E outcomes; unset in prod/dev, where it stays provably-fair.
   CRASH_SCENARIO: z.string().optional(),
 });
 

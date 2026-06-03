@@ -13,12 +13,9 @@ import {
 } from "../../application/realtime/round-event-publisher";
 import { JwtVerifier } from "../auth/jwt-verifier";
 
-// Server -> client only (ADR-0003): broadcasts Round phase transitions to every connected client,
-// and delivers owner-only events (a private bet.rejected) to a per-player room. The JWT is
-// validated in connection middleware, which also joins the socket to a room named after its
-// playerId, so an unauthenticated socket is rejected before it joins anything — no event can race
-// the rejection. The websocket-only transport lets the upgrade pass cleanly through Kong without
-// the polling handshake.
+// Server -> client only (ADR-0003): phase transitions broadcast to all; bet.rejected goes to a
+// per-player room. JWT validated in connection middleware before the socket joins anything.
+// websocket-only transport lets the upgrade pass cleanly through Kong without the polling handshake.
 @WebSocketGateway({ transports: ["websocket"] })
 export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
   private readonly logger = new Logger(RoundGateway.name);
@@ -45,7 +42,7 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     const playerId = await this.jwt.verify(token);
     socket.data.playerId = playerId;
     // Join a room named after the player so owner-only events reach every tab this player has open,
-    // and no one else (#7). Public broadcasts still go to all sockets via server.emit.
+    // and no one else. Public broadcasts still go to all sockets via server.emit.
     await socket.join(playerId);
   }
 
@@ -83,7 +80,7 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     this.server.emit(event, payload);
   }
 
-  // Owner-only delivery: emits to the room the player's sockets joined at the handshake (#7).
+  // Owner-only delivery: emits to the room the player's sockets joined at the handshake.
   private emitToPlayer(playerId: string, event: string, payload: object): void {
     if (!this.server) {
       this.logger.warn(

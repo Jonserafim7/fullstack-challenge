@@ -16,11 +16,8 @@ import { RoundPhase } from "../../domain/entities/round";
 
 const ONE_X_HUNDREDTHS = 100;
 
-// Cashes out the caller's Bet on the current Round. Cash out is authoritative and synchronous in
-// games (ADR-0001): the server — never the client — locks the multiplier from the shared curve at
-// the instant of the request, marks the Bet Cashed Out, and enqueues the payout credit in the same
-// transaction. The credit (stake × locked multiplier) then flows to wallets asynchronously and
-// unconditionally. Deciding the win in games prevents a player from losing a cash out to wallets
+// Cash out is authoritative and synchronous in games (ADR-0001): the server locks the multiplier
+// and enqueues the payout in one transaction, so a player never loses a valid cash out to wallets
 // latency during a crash.
 @Injectable()
 export class CashOutBetUseCase {
@@ -45,15 +42,13 @@ export class CashOutBetUseCase {
     }
 
     const now = new Date();
-    // Clamp to >= 0 so the curve floor is 1.00x: a cash out can never lock below the stake, even if
-    // the clock skews backward or the request lands at the exact instant the Round started running.
+    // Clamp to >= 0 so the curve floor is 1.00x even if the clock skews backward.
     const elapsedMs = Math.max(0, now.getTime() - round.startedAt.getTime());
     const lockedHundredths = Math.floor(
       multiplierAt({ elapsedMs }) * ONE_X_HUNDREDTHS,
     );
-    // The phase is read from the database, which can lag the engine's crash by a few ms. The curve
-    // is the real clock: if it has already reached the Crash Point, the Round has crashed and there
-    // is nothing to win — reject rather than pay out a multiplier the player never actually hit.
+    // The persisted phase can lag the engine's crash by a few ms; the curve is the real clock, so if
+    // it already reached the Crash Point the Round has crashed — reject rather than overpay.
     if (lockedHundredths >= round.crashPointHundredths) {
       throw new CashOutUnavailableError("the Round has crashed");
     }

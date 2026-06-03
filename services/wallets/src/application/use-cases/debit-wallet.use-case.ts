@@ -18,7 +18,7 @@ import { NewOutboxMessage } from "../messaging/outbox-store";
 // `bet.debit-rejected` when they fall short — so the balance delta (if any), the dedup key, and the
 // reply commit together. A redelivered debit hits the inbox primary key, surfaces as
 // DuplicateMessageError, and is swallowed as a no-op — money moves once. Insufficient funds is a
-// committed business outcome (it picks the rejection reply), not a thrown error (#7).
+// committed business outcome (it picks the rejection reply), not a thrown error.
 @Injectable()
 export class DebitWalletUseCase {
   private readonly logger = new Logger(DebitWalletUseCase.name);

@@ -12,12 +12,8 @@ import { InboxStore, RefundableBet } from "../messaging/inbox-store";
 import { NewOutboxMessage } from "../messaging/outbox-store";
 import { RoundEventPublisher } from "../realtime/round-event-publisher";
 
-// Applies a `bet.debit-confirmed` reply exactly once (ADR-0001): the inbox marks the Bet Confirmed
-// and records the dedup key in one transaction; a redelivery hits the inbox primary key, surfaces
-// as DuplicateMessageError, and is swallowed as a no-op. If the Bet was already Voided (its betting
-// window closed before this debit landed) the same transaction instead enqueues a compensating
-// Refund. Only after a confirmation commits does it broadcast `bet.confirmed` — best-effort, so it
-// stays outside the transaction (clients can re-hydrate over REST).
+// Applies a bet.debit-confirmed reply exactly once (ADR-0001). The broadcast stays outside the
+// transaction — it is best-effort, and clients can re-hydrate over REST.
 @Injectable()
 export class ConfirmBetUseCase {
   private readonly logger = new Logger(ConfirmBetUseCase.name);

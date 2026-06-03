@@ -1,10 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { BetRepository } from "../repositories/bet.repository";
 
-// Settles a crashed Round (ADR-0001): every Bet still Confirmed never cashed out, so it Loses. No
-// money moves — the stake already left at debit-on-bet, and a Lost bet is paid nothing. Cashed-out
-// bets are already terminal and untouched. Kept as a thin use-case (not inlined in the engine) so
-// the timer loop stays free of business logic and a settlement failure can be isolated.
+// Settles a crashed Round: every still-Confirmed Bet never cashed out, so it Loses. No money moves
+// (the stake left at debit-on-bet, ADR-0001). A thin use-case so a settlement failure stays isolated
+// from the engine's timer loop.
 @Injectable()
 export class SettleRoundUseCase {
   private readonly logger = new Logger(SettleRoundUseCase.name);

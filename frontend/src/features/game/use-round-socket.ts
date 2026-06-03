@@ -85,7 +85,7 @@ export function useRoundSocket(): void {
       }
     });
     socket.on(RoundEvent.BET_CONFIRMED, (event: BetConfirmedEvent) => {
-      // Public event: every client sees who joined the Round, so add it to the live list (#9).
+      // Public event: every client adds the new participant to the live list.
       useParticipantsStore.getState().confirm(event);
       const { bet, confirm } = useBetStore.getState();
       // The client's own bet: confirmation means the stake left the wallet, so refetch the balance
@@ -108,7 +108,7 @@ export function useRoundSocket(): void {
       }
     });
     socket.on(RoundEvent.BET_CASHED_OUT, (event: BetCashedOutEvent) => {
-      // Public event: every client sees who escaped before the crash, so update the live list (#9).
+      // Public event: every client updates the live list with the cashout.
       useParticipantsStore.getState().cashOut(event);
       const { bet, cashOut } = useBetStore.getState();
       // Backstop for the placer: the HTTP cash-out response normally updates the store and the

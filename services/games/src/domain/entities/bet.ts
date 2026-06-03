@@ -1,10 +1,6 @@
 import { Money } from "@crash/money";
 import { InvalidBetTransitionError } from "../errors/invalid-bet-transition.error";
 
-// The full Bet lifecycle from CONTEXT.md. Modeled in one place as the domain's shared language;
-// #14 only exercises Pending -> Confirmed. The terminal states (Rejected on a refused debit,
-// Voided on a missed betting window, Cashed Out / Lost at settlement) get their transitions with
-// #7 (compensation) and #8 (cash out).
 export const BetStatus = {
   PENDING: "PENDING",
   CONFIRMED: "CONFIRMED",
@@ -15,11 +11,8 @@ export const BetStatus = {
 } as const;
 export type BetStatus = (typeof BetStatus)[keyof typeof BetStatus];
 
-// A single player's wager on one Round (CONTEXT.md). The aggregate owns only the bet rules — its
-// status machine — not persistence or the broker. It is born Pending and becomes a real
-// participant in the Round only once the Wallet confirms the debit. The username is captured at
-// placement so the public `bet.confirmed` broadcast can name the player without wallets ever
-// learning usernames (it deals in playerId and money alone).
+// The username is captured at placement so the public bet.confirmed broadcast can name the player
+// without wallets ever learning usernames — it deals in playerId and money alone.
 export class Bet {
   private constructor(
     public readonly betId: string,
@@ -101,8 +94,7 @@ export class Bet {
     return this.confirmedTimestamp;
   }
 
-  // The locked multiplier (integer hundredths, 247 = 2.47x) at the instant the player cashed out,
-  // null until then. The payout is stake × this value.
+  // Integer hundredths (247 = 2.47x), null until cashed out.
   get cashedOutMultiplier(): number | null {
     return this.cashedOutMultiplierHundredths;
   }
@@ -111,18 +103,15 @@ export class Bet {
     return this.cashedOutTimestamp;
   }
 
-  // The Wallet debited the stake: the bet is now a real participant in the Round. Idempotency
-  // lives in the inbox (a redelivered confirmation never reaches here twice), so a second confirm
-  // is a genuine programming error and throws.
+  // Idempotency lives in the inbox, so a redelivered confirmation never reaches here twice; a second
+  // confirm is therefore a programming error and throws.
   confirm({ confirmedAt }: { confirmedAt: Date }): void {
     this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.CONFIRMED);
     this.currentStatus = BetStatus.CONFIRMED;
     this.confirmedTimestamp = confirmedAt;
   }
 
-  // The player cashed out while the Round was Running: lock in the multiplier games computed from
-  // the shared curve (the server is the authority — never the client) and record the moment. Only a
-  // Confirmed bet can cash out; the payout credit follows asynchronously and unconditionally (#8).
+  // The multiplier is the server's authority from the shared curve, never the client's.
   cashOut({
     multiplierHundredths,
     at,
@@ -136,24 +125,19 @@ export class Bet {
     this.cashedOutTimestamp = at;
   }
 
-  // The Round crashed and this Confirmed bet never cashed out. No money moves — the stake left at
-  // debit-on-bet (ADR-0001); Lost only records that the wager did not win.
+  // No money moves: the stake already left at debit-on-bet (ADR-0001), so Lost only records the miss.
   lose(): void {
     this.ensureCurrentStatusIs(BetStatus.CONFIRMED, BetStatus.LOST);
     this.currentStatus = BetStatus.LOST;
   }
 
-  // wallets refused the debit (insufficient funds): the stake never left, so the bet never
-  // participates. Only a Pending bet can be Rejected; a later rejection for an already-Voided bet is
-  // a no-op handled upstream, never reaching here (ADR-0001).
+  // A rejection for an already-Voided bet is a no-op resolved upstream and never reaches here.
   reject(): void {
     this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.REJECTED);
     this.currentStatus = BetStatus.REJECTED;
   }
 
-  // The Round left Betting while this bet was still Pending: it missed the window and never
-  // participated. No money moves here — if its debit lands afterward, the late confirmation issues a
-  // compensating Refund (ADR-0001). Only a Pending bet can be Voided.
+  // No money moves here; if the debit lands afterward, the late confirmation issues a Refund (ADR-0001).
   void(): void {
     this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.VOIDED);
     this.currentStatus = BetStatus.VOIDED;

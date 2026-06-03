@@ -1,13 +1,9 @@
 import { create } from "zustand";
 import { BetStatus } from "./round-contracts";
 
-// The client's own latest Bet. Born Pending when POST /games/bet returns 202, flipped to Confirmed
-// when the public bet.confirmed event arrives for this betId. It carries its roundNumber so the
-// panel can tell whether it belongs to the current Round; it is replaced (not cleared on round
-// change) when the player places the next Bet. Keeping it past the round boundary means a
-// confirmation that lands just after the next Round opens still matches by betId, so the balance
-// refetch is never skipped. Other players' bets are not tracked — #14 only needs the placer's own
-// state (ADR-0006: Zustand for live, WebSocket-driven state).
+// The client's own latest Bet. It carries its roundNumber so the panel knows whether it belongs to
+// the current Round, and is kept past the round boundary (not cleared) so a confirmation that lands
+// just after the next Round opens still matches by betId, and the balance refetch is never skipped.
 export interface ActiveBet {
   betId: string;
   roundNumber: number;

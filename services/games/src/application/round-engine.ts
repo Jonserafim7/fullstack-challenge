@@ -19,11 +19,9 @@ import { VoidPendingBetsUseCase } from "./use-cases/void-pending-bets.use-case";
 
 const ONE_X_HUNDREDTHS = 100;
 
-// Drives the continuous Round lifecycle on a timer. Each Round's Crash Point is fixed up
-// front from the provably-fair chain; the Running phase lasts exactly as long as the shared
-// curve takes to reach that Crash Point. A self-rescheduling chain of timeouts (not an
-// interval, since every phase has a different length) advances the state machine and
-// persists each transition. Server -> client push and the canvas come in later slices.
+// Drives the continuous Round lifecycle. The Running phase lasts exactly as long as the shared curve
+// takes to reach the Crash Point, so a self-rescheduling chain of timeouts (not a fixed interval)
+// advances and persists each transition.
 @Injectable()
 export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(RoundEngine.name);
@@ -131,9 +129,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
       roundNumber: round.roundNumber,
       startedAt: round.startedAt!.toISOString(),
     });
-    // Betting just closed: any Bet still Pending missed the window and is Voided. Isolated in its
-    // own try/catch — a void failure must not stop the round chain below (a late debit will still be
-    // compensated by a Refund when it lands).
+    // Isolated so a void failure does not stop the round chain (a late debit is still refunded).
     try {
       await this.voidPendingBets.execute({ roundNumber: round.roundNumber });
     } catch (error) {
@@ -162,8 +158,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
         houseEdge: round.houseEdge,
       },
     });
-    // The phase is now CRASHED, so no further cash out can succeed; every still-Confirmed bet Lost.
-    // Isolated in its own try/catch: a settlement failure must not stop the round chain below.
+    // Isolated so a settlement failure does not stop the round chain.
     try {
       await this.settleRound.execute({ roundNumber: round.roundNumber });
     } catch (error) {

@@ -19,10 +19,8 @@ import { RoundPhase } from "../../domain/entities/round";
 export const MIN_STAKE_CENTS = 100;
 export const MAX_STAKE_CENTS = 100_000;
 
-// Places one Bet on the current Round as an optimistic saga (ADR-0001): it validates the betting
-// rules games owns — bets only during Betting, one per player per Round — then writes a Pending
-// Bet and its `wallet.debit` command in one transaction. The HTTP request returns immediately
-// (202); whether the stake clears is wallets' call, delivered later over the broker.
+// Places one Bet as an optimistic saga (ADR-0001): write a Pending Bet and its wallet.debit command
+// in one transaction and return 202; whether the stake clears is wallets' call, delivered later.
 @Injectable()
 export class PlaceBetUseCase {
   constructor(

@@ -25,13 +25,10 @@ interface AmqpMessageLike {
   properties?: { headers?: Record<string, unknown> | null };
 }
 
-// The single consumer on wallets.inbox. It binds every routing key wallets must act on (plus
-// `redeliver.wallets`, which the delay queue dead-letters expired retries back to) and dispatches by
-// message type — one consumer per queue, because two consumers on the same queue would compete and a
-// debit could be delivered to the wrong handler (AMQP routes to the queue, then round-robins its
-// consumers regardless of routing key). A successful (or already-seen, deduplicated) message acks;
-// a transient failure is retried with exponential backoff via the delay queue and, once the attempts
-// are exhausted, dead-lettered to crash.dlx (ADR-0001's poison-message path).
+// The single consumer on wallets.inbox, dispatching by message type. One consumer per queue: AMQP
+// round-robins consumers on a queue regardless of routing key, so a second would receive commands
+// meant for this one. A transient failure retries with exponential backoff via the delay queue and,
+// once exhausted, dead-letters to crash.dlx (ADR-0001).
 @Injectable()
 export class WalletsInboxConsumer {
   private readonly logger = new Logger(WalletsInboxConsumer.name);
@@ -127,7 +124,7 @@ export class WalletsInboxConsumer {
       case MessageType.WALLET_DEBIT:
         return this.debitWallet.handle(envelope);
       // Payout and refund are both unconditional credits keyed on the betId, so they share the one
-      // credit path; the inbox dedups each on its own key (`payout:` / `refund:`) (#7, #8).
+      // credit path; the inbox dedups each on its own key (`payout:` / `refund:`).
       case MessageType.WALLET_PAYOUT:
       case MessageType.WALLET_REFUND:
         return this.creditWallet.handle(envelope);
