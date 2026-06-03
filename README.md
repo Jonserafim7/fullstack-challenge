@@ -1,5 +1,7 @@
 # Crash Game 🎮
 
+[![CI](https://github.com/Jonserafim7/fullstack-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/Jonserafim7/fullstack-challenge/actions/workflows/ci.yml)
+
 Implementação do desafio **Crash Game** da Jungle Gaming. O enunciado — regras do jogo, contrato da
 API, infraestrutura e critérios de avaliação — está preservado em
 [`docs/CHALLENGE.md`](./docs/CHALLENGE.md).
@@ -27,10 +29,6 @@ o boot com `healthcheck` + `depends_on: condition: service_healthy`.
 - 👤 Login: `player` / `player123` (carteira já com **R$ 1.000,00**; há um `player2` para testar duas abas)
 - `bun run docker:down` para parar · `bun run docker:prune` para limpar volumes e imagens
 
-> Dev loop do frontend (HMR): suba a infra com `docker:up` e rode o front localmente —
-> `cd frontend && bun run dev` (porta 3000; `bun run check` faz lint + typecheck). O front é um app
-> Bun **standalone**, fora do `workspaces` da raiz.
-
 ---
 
 ## Stack escolhida 🧰
@@ -50,21 +48,63 @@ acomodar clientes de polling sem deixar de barrar abuso.
 
 Dois _bounded contexts_ NestJS — **games** e **wallets** — cada um com as camadas de DDD
 (Domain-Driven Design) estritamente separadas: `domain → application → infrastructure → presentation`.
-A topologia de containers é a do enunciado
-([diagrama](./docs/CHALLENGE.md#arquitetura-)); o que foi **projetado** aqui é a ligação entre os
-serviços: eles **só** se comunicam de forma assíncrona pelo RabbitMQ.
+O que foi **projetado** aqui é a ligação entre os serviços: eles **só** se comunicam de forma
+assíncrona pelo RabbitMQ (outbox → relay → inbox idempotente), nunca por chamada direta.
+
+```mermaid
+graph TD
+    FE["Frontend<br/>TanStack Start + Tailwind"]
+    Kong["Kong :8000<br/>gateway · CORS · rate-limit"]
+    Games["games :4001<br/>rodadas · bets · crash · WS · provably-fair"]
+    Wallets["wallets :4002<br/>saldo · crédito · débito"]
+    PG[("PostgreSQL<br/>DBs games + wallets")]
+    MQ[["RabbitMQ<br/>crash.events / crash.dlx"]]
+    KC["Keycloak<br/>OIDC · emite JWT"]
+
+    FE -- "REST + WebSocket" --> Kong
+    Kong --> Games
+    Kong --> Wallets
+    Games -- "outbox → relay" --> MQ
+    Wallets -- "outbox → relay" --> MQ
+    MQ -- "inbox idempotente" --> Games
+    MQ -- "inbox idempotente" --> Wallets
+    Games --> PG
+    Wallets --> PG
+    FE -. "login OIDC" .-> KC
+    Games -. "valida JWT (JWKS)" .-> KC
+    Wallets -. "valida JWT (JWKS)" .-> KC
+```
 
 ### A saga de aposta (o ponto central da avaliação)
 
 A aposta é uma **saga otimista** com garantias de entrega ([ADR-0001](./docs/adr/0001-async-games-wallets-integration.md),
 [ADR-0008](./docs/adr/0008-messaging-implementation.md)):
 
-```
-apostar (POST /games/bet → 202)              sacar (POST /games/bet/cashout → 200)
-   │ grava Bet=PENDING + outbox[wallet.debit]    │ grava Bet=CASHED_OUT + outbox[wallet.payout]
-   ▼            (1 transação)                     ▼            (1 transação)
- games ─debit─► wallets ─debit-confirmed─► games (Bet=CONFIRMED, broadcast bet.confirmed)
-                   └────debit-rejected───► games (Bet=REJECTED, push privado ao dono)
+```mermaid
+sequenceDiagram
+    actor Player as Jogador
+    participant Games as games
+    participant Wallets as wallets
+
+    Player->>Games: apostar<br/>POST /games/bet
+    Games->>Games: grava Bet=PENDING + outbox[wallet.debit]<br/>(1 transação)
+    Games-->>Player: 202 Accepted
+    Games-->>Wallets: wallet.debit
+
+    alt débito confirmado
+        Wallets-->>Games: debit-confirmed
+        Games->>Games: Bet=CONFIRMED
+        Games-->>Player: broadcast bet.confirmed
+    else débito rejeitado
+        Wallets-->>Games: debit-rejected
+        Games->>Games: Bet=REJECTED
+        Games-->>Player: push privado ao dono
+    end
+
+    Player->>Games: sacar<br/>POST /games/bet/cashout
+    Games->>Games: grava Bet=CASHED_OUT + outbox[wallet.payout]<br/>(1 transação)
+    Games-->>Player: 200 OK
+    Games-->>Wallets: wallet.payout
 ```
 
 - **Débito na aposta** (não na liquidação); **cash out é autoritativo no games** — o servidor trava
@@ -129,16 +169,32 @@ raciocínio sem ler todo o código. Ficam em [`docs/adr/`](./docs/adr/).
 ## Testes 🧪
 
 ```bash
-bun run test:unit                          # todos os testes de unidade (domínio + use cases)
-cd services/games && bun test tests/e2e    # E2E pela API real (requer `bun run docker:up`)
-cd frontend && bun run check               # lint + typecheck do front
+bun run test:unit                          # unidade do backend (domínio + use cases)
+cd frontend && bun test                    # unidade/componente do frontend
+cd frontend && bun run check               # lint + typecheck do frontend
+bun run docker:up:e2e                       # sobe o stack com cenário de crash determinístico
+cd services/games && bun test tests/e2e    # E2E pela API real (via Kong)
 ```
 
-**101 testes de unidade** cobrem o ciclo de vida e as invariantes do Round, a máquina de status do
-Bet, a Wallet (incl. saldo insuficiente e precisão), o provably fair (derivação + verificação da
-chain), e a mensageria (dedup do inbox, retry policy). Os **E2E** exercem, ponta a ponta via Kong:
-aposta→confirmação→débito, aposta→saque→crédito, saldo insuficiente (rejeição pelo broker, sem mover
-dinheiro), crash→perda, e presença ao vivo no WebSocket.
+**103 testes de unidade** no backend cobrem o ciclo de vida e as invariantes do Round, a máquina de
+status do Bet, a Wallet (incl. saldo insuficiente e precisão), o provably fair (derivação +
+verificação da chain) e a mensageria (dedup do inbox, retry policy); **17 no frontend** cobrem
+parsing/validação de aposta, as derivações do painel, as stores e os formatadores. Os **E2E**
+exercem, ponta a ponta via Kong: aposta→confirmação→débito, aposta→saque→crédito, saldo insuficiente
+(rejeição pelo broker, sem mover dinheiro), crash→perda e presença ao vivo no WebSocket.
+
+O E2E é **determinístico** via `docker-compose.e2e.yml` (crash points roteirizados por
+`CRASH_SCENARIO`), e um **CI** (GitHub Actions) roda lint + typecheck + unidade a cada push/PR.
+
+---
+
+## Extras (bônus do desafio) ⭐
+
+- **Outbox/Inbox transacional** — _at-least-once_ na entrega, _exactly-once_ no efeito ([ADR-0008](./docs/adr/0008-messaging-implementation.md)).
+- **Verificação provably-fair no navegador** — o cliente recalcula o crash point sem confiar no servidor.
+- **Rate limiting** no Kong (per-IP, `429` acima do limite).
+- **CI** (GitHub Actions) rodando lint + typecheck + testes a cada push/PR.
+- **Seed determinística para E2E** — `docker-compose.e2e.yml` roteiriza crash points reproduzíveis.
 
 ---
 
