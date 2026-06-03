@@ -33,8 +33,7 @@ import {
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 20;
 
-// Watching the game is public, so these endpoints carry no auth guard (ADR-0003): a client
-// hydrates the current Round here on connect, then receives deltas over WebSocket.
+// No auth guard: watching the round is public; clients hydrate here then follow WebSocket deltas.
 @ApiTags("rounds")
 @Controller()
 export class RoundsController {

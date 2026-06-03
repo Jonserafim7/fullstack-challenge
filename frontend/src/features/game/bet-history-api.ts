@@ -2,7 +2,6 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { type BetStatus } from "./bet-api";
 
-// One row of the player's own Bet history (GET /games/bets/me). Mirrors the games BetResponseDto.
 export interface HistoryBet {
   betId: string;
   roundNumber: number;
@@ -21,9 +20,6 @@ export interface BetHistoryPage {
 
 export const BET_HISTORY_PAGE_SIZE = 5;
 
-// The page-less prefix of the per-page query keys built in useBetHistoryQuery ([...key, page]).
-// Invalidating this prefix matches every cached page at once, so the socket can refresh the whole
-// history when the player's own Bet changes (see use-round-socket).
 export const betHistoryQueryKey = ["bets", "me"] as const;
 
 async function fetchBetHistory(page: number): Promise<BetHistoryPage> {
@@ -33,8 +29,6 @@ async function fetchBetHistory(page: number): Promise<BetHistoryPage> {
   return data;
 }
 
-// The player's own Bet history, paginated. Refetched (via key invalidation in use-round-socket)
-// whenever one of the player's Bets reaches a new state, so the list stays current without polling.
 export function useBetHistoryQuery(page: number) {
   return useQuery({
     queryKey: [...betHistoryQueryKey, page],

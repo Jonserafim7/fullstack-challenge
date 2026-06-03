@@ -1,9 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Round } from "../../domain/entities/round";
 
-// Everything a player needs to independently verify a past Round (ADR-0002): hash the Server Seed
-// to confirm the chain link to previousSeed, then recompute the Crash Point from the seeds and
-// house edge. Exposed publicly once the Round has Crashed.
 export class RoundVerificationResponseDto {
   @ApiProperty({ description: "The Round being verified.", example: 137 })
   roundNumber!: number;

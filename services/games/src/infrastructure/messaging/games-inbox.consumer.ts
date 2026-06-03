@@ -17,18 +17,15 @@ import { ConfirmBetUseCase } from "../../application/use-cases/confirm-bet.use-c
 import { RejectBetUseCase } from "../../application/use-cases/reject-bet.use-case";
 import { EnvService } from "../env/env.service";
 
-// The retry attempt count rides in this header so it survives the delay-queue round trip.
+// Rides in this header so the count survives the delay-queue round trip.
 const RETRY_COUNT_HEADER = "x-retry-count";
 
-// Just enough of the raw AMQP message to read the retry header, without depending on amqplib types.
+// Minimal subset to read the retry header without pulling in amqplib types.
 interface AmqpMessageLike {
   properties?: { headers?: Record<string, unknown> | null };
 }
 
-// The single consumer on games.inbox, dispatching by message type. One consumer per queue: AMQP
-// round-robins consumers on a queue regardless of routing key, so a second would receive replies
-// meant for this one. A transient failure retries with exponential backoff via the delay queue and,
-// once exhausted, dead-letters to crash.dlx (ADR-0001).
+// One consumer per queue: AMQP round-robins across consumers regardless of routing key.
 @Injectable()
 export class GamesInboxConsumer {
   private readonly logger = new Logger(GamesInboxConsumer.name);
@@ -71,10 +68,6 @@ export class GamesInboxConsumer {
     }
   }
 
-  // A transient failure is parked in the delay queue with an exponentially growing TTL and retried
-  // from the inbox when it expires; once the attempts are exhausted the message is poison and is
-  // dead-lettered (Nack without requeue). If scheduling the retry itself fails, the message is
-  // requeued rather than lost to the DLQ.
   private async scheduleRetryOrDeadLetter(
     envelope: MessageEnvelope,
     amqpMsg: AmqpMessageLike,

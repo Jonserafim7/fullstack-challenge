@@ -6,9 +6,6 @@ import { formatCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// The app-shell header and the only place the balance lives (README "saldo em destaque"): a prominent
-// lime pill that bumps when a cash-out credit lands. Brand mark on the left, balance + username +
-// logout on the right.
 export function TopBar({ onLogout }: { onLogout: () => void }) {
   const { data, isPending } = useBalanceQuery();
   const balance = data?.balance ?? null;
@@ -65,7 +62,6 @@ export function TopBar({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-// Flips on for one animation cycle whenever the balance increases (a cash-out credit landed).
 function useBalanceBump(balance: number | null): boolean {
   const previous = useRef<number | null>(null);
   const [bumping, setBumping] = useState(false);

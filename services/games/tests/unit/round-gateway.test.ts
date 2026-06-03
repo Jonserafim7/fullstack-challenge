@@ -5,7 +5,6 @@ import type { JwtVerifier } from "../../src/infrastructure/auth/jwt-verifier";
 interface EmittedEvent {
   event: string;
   payload: unknown;
-  // The room a private emit targeted, or undefined for a broadcast (server.emit).
   room?: string;
 }
 

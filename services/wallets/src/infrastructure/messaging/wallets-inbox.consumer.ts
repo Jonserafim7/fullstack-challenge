@@ -20,15 +20,10 @@ import { EnvService } from "../env/env.service";
 // The retry attempt count rides in this header so it survives the delay-queue round trip.
 const RETRY_COUNT_HEADER = "x-retry-count";
 
-// Just enough of the raw AMQP message to read the retry header, without depending on amqplib types.
 interface AmqpMessageLike {
   properties?: { headers?: Record<string, unknown> | null };
 }
 
-// The single consumer on wallets.inbox, dispatching by message type. One consumer per queue: AMQP
-// round-robins consumers on a queue regardless of routing key, so a second would receive commands
-// meant for this one. A transient failure retries with exponential backoff via the delay queue and,
-// once exhausted, dead-letters to crash.dlx (ADR-0001).
 @Injectable()
 export class WalletsInboxConsumer {
   private readonly logger = new Logger(WalletsInboxConsumer.name);
@@ -72,10 +67,6 @@ export class WalletsInboxConsumer {
     }
   }
 
-  // A transient failure is parked in the delay queue with an exponentially growing TTL and retried
-  // from the inbox when it expires; once the attempts are exhausted the message is poison and is
-  // dead-lettered (Nack without requeue). If scheduling the retry itself fails, the message is
-  // requeued rather than lost to the DLQ.
   private async scheduleRetryOrDeadLetter(
     envelope: MessageEnvelope,
     amqpMsg: AmqpMessageLike,
@@ -123,8 +114,7 @@ export class WalletsInboxConsumer {
     switch (envelope.type) {
       case MessageType.WALLET_DEBIT:
         return this.debitWallet.handle(envelope);
-      // Payout and refund are both unconditional credits keyed on the betId, so they share the one
-      // credit path; the inbox dedups each on its own key (`payout:` / `refund:`).
+      // Payout and refund are both unconditional credits; they share one path, deduped on separate keys.
       case MessageType.WALLET_PAYOUT:
       case MessageType.WALLET_REFUND:
         return this.creditWallet.handle(envelope);

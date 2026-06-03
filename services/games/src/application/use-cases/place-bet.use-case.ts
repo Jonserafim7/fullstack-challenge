@@ -15,12 +15,9 @@ import { RoundRepository } from "../repositories/round.repository";
 import { Bet } from "../../domain/entities/bet";
 import { RoundPhase } from "../../domain/entities/round";
 
-// Stake bounds from the README: R$1,00–R$1.000,00, held as integer cents.
 export const MIN_STAKE_CENTS = 100;
 export const MAX_STAKE_CENTS = 100_000;
 
-// Places one Bet as an optimistic saga (ADR-0001): write a Pending Bet and its wallet.debit command
-// in one transaction and return 202; whether the stake clears is wallets' call, delivered later.
 @Injectable()
 export class PlaceBetUseCase {
   constructor(

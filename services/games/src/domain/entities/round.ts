@@ -8,8 +8,6 @@ export const RoundPhase = {
 } as const;
 export type RoundPhase = (typeof RoundPhase)[keyof typeof RoundPhase];
 
-// State machine Betting -> Running -> Crashed -> Settled; any out-of-order transition throws. Pure
-// (no ORM, no timers): the engine owns the clock and persistence, the Round owns only the rules.
 export class Round {
   private constructor(
     public readonly roundNumber: number,

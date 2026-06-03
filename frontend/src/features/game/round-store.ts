@@ -17,9 +17,7 @@ const phaseRank: Record<RoundPhase, number> = {
   [RoundPhase.SETTLED]: 3,
 };
 
-// A monotonic key over (roundNumber, phase). Rounds and phases only ever move forward, so a
-// stale REST snapshot — one that resolves after a newer WebSocket delta already landed — can
-// be detected and ignored instead of regressing the store.
+// Monotonic key so a stale REST snapshot that resolves after a newer WebSocket delta is detected and ignored.
 function progressKey(
   roundNumber: number | null,
   phase: RoundPhase | null,
@@ -47,8 +45,6 @@ interface RoundState {
   applyCrashed: (event: CrashedEvent) => void;
 }
 
-// Live Round state seeded by the REST snapshot, then advanced by WebSocket deltas (ADR-0006). The
-// multiplier curve is not kept here — it is a cosmetic client-side function of time on the canvas.
 export const useRoundStore = create<RoundState>((set) => ({
   connection: "connecting",
   roundNumber: null,
@@ -73,8 +69,7 @@ export const useRoundStore = create<RoundState>((set) => ({
       if (isStale) {
         return {};
       }
-      // seedHash and verification only arrive on the round's own WebSocket events; clear them
-      // when hydrating a different round so a late joiner never shows the prior round's values.
+      // Clear seedHash/verification on a new round so a late joiner never shows the prior round's values.
       const isNewRound = snapshot.roundNumber !== state.roundNumber;
       return {
         roundNumber: snapshot.roundNumber,

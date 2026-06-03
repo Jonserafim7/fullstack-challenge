@@ -16,7 +16,6 @@ import type {
 import { Bet } from "../../src/domain/entities/bet";
 import { RejectBetUseCase } from "../../src/application/use-cases/reject-bet.use-case";
 
-// A Bet as the inbox returns it after marking it Rejected (Pending -> Rejected).
 function rejectedBet(): Bet {
   const bet = Bet.place({
     betId: "bet-1",

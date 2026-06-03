@@ -1,14 +1,5 @@
-# Deterministic E2E overrides (issue #28). Layer this on top of docker-compose.yml so the games
-# engine uses a scripted, reproducible Crash Point sequence instead of the provably-fair derivation,
-# with a slightly wider betting window so a bet always lands inside it. The base stack stays
-# provably-fair; only this profile scripts outcomes.
-#
-#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build games
-#   cd services/games && bun test tests/e2e   # then run the suite against the live stack
-#
-# Crash Points are integer hundredths (300 = 3.00x); the engine cycles through them by round number.
-# All are comfortably above 1.00x and run for several seconds, so a cash out can always lock a
-# multiplier above the stake.
+# Test-only override: CRASH_SCENARIO scripts a reproducible Crash Point sequence (hundredths) so the
+# E2E is deterministic; the base stack stays provably-fair.
 services:
   games:
     environment:

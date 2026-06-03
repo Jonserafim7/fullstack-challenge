@@ -11,8 +11,6 @@ export const BetStatus = {
 } as const;
 export type BetStatus = (typeof BetStatus)[keyof typeof BetStatus];
 
-// The username is captured at placement so the public bet.confirmed broadcast can name the player
-// without wallets ever learning usernames — it deals in playerId and money alone.
 export class Bet {
   private constructor(
     public readonly betId: string,
@@ -94,7 +92,6 @@ export class Bet {
     return this.confirmedTimestamp;
   }
 
-  // Integer hundredths (247 = 2.47x), null until cashed out.
   get cashedOutMultiplier(): number | null {
     return this.cashedOutMultiplierHundredths;
   }
@@ -103,15 +100,12 @@ export class Bet {
     return this.cashedOutTimestamp;
   }
 
-  // Idempotency lives in the inbox, so a redelivered confirmation never reaches here twice; a second
-  // confirm is therefore a programming error and throws.
   confirm({ confirmedAt }: { confirmedAt: Date }): void {
     this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.CONFIRMED);
     this.currentStatus = BetStatus.CONFIRMED;
     this.confirmedTimestamp = confirmedAt;
   }
 
-  // The multiplier is the server's authority from the shared curve, never the client's.
   cashOut({
     multiplierHundredths,
     at,
@@ -131,7 +125,6 @@ export class Bet {
     this.currentStatus = BetStatus.LOST;
   }
 
-  // A rejection for an already-Voided bet is a no-op resolved upstream and never reaches here.
   reject(): void {
     this.ensureCurrentStatusIs(BetStatus.PENDING, BetStatus.REJECTED);
     this.currentStatus = BetStatus.REJECTED;

@@ -12,8 +12,6 @@ import { InboxStore, RefundableBet } from "../messaging/inbox-store";
 import { NewOutboxMessage } from "../messaging/outbox-store";
 import { RoundEventPublisher } from "../realtime/round-event-publisher";
 
-// Applies a bet.debit-confirmed reply exactly once (ADR-0001). The broadcast stays outside the
-// transaction — it is best-effort, and clients can re-hydrate over REST.
 @Injectable()
 export class ConfirmBetUseCase {
   private readonly logger = new Logger(ConfirmBetUseCase.name);

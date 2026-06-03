@@ -10,8 +10,6 @@ import { EnvService } from "../env/env.service";
 
 export interface AuthenticatedRequest extends Request {
   playerId: string;
-  // The Keycloak `preferred_username`, captured so a placed Bet can be broadcast by name. Falls
-  // back to the subject if a token somehow omits it.
   username: string;
 }
 

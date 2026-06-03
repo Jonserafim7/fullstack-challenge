@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { BetRepository } from "../repositories/bet.repository";
 
-// Voids every Bet still Pending when a Round leaves Betting (ADR-0001): the betting window is the
-// debit deadline. No money moves; a debit that lands afterward is compensated by a Refund.
+// No money moves: no debit has landed yet; a late debit that arrives afterward triggers a Refund.
 @Injectable()
 export class VoidPendingBetsUseCase {
   private readonly logger = new Logger(VoidPendingBetsUseCase.name);

@@ -35,8 +35,6 @@ function confirmedBet(): Bet {
   return bet;
 }
 
-// Drives recordConfirmation by deciding the result; for the Voided branch it runs the use-case's
-// own buildRefund factory (as the real repo would) so the test sees exactly what would be enqueued.
 function buildHarness(
   decide: (
     buildRefund: (bet: RefundableBet) => NewOutboxMessage,

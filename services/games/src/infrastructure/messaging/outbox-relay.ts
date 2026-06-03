@@ -14,10 +14,6 @@ import { EnvService } from "../env/env.service";
 
 const DRAIN_BATCH_SIZE = 20;
 
-// Drains the transactional outbox to RabbitMQ (ADR-0008). Every ~500ms it claims PENDING rows
-// and publishes each; a row is only marked PUBLISHED once the broker confirms the publish (the
-// golevelup publish resolves on the publisher-confirm ack). A failed publish leaves the row
-// PENDING with an incremented attempt count, so it is retried on the next tick.
 @Injectable()
 export class OutboxRelay
   implements OnApplicationBootstrap, OnApplicationShutdown
@@ -99,9 +95,8 @@ export class OutboxRelay
       });
       return;
     }
-    // Published and confirmed by the broker. If recording the status now fails, the row stays
-    // PENDING and is republished next tick (at-least-once, deduplicated downstream); a confirmed
-    // publish must not count as a failed attempt.
+    // If markPublished fails the row stays PENDING and is republished next tick (at-least-once);
+    // a broker-confirmed publish must never count as a failed attempt.
     await this.outbox.markPublished(message.id);
   }
 }

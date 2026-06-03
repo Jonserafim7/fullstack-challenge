@@ -1,6 +1,3 @@
-// The contract between the games service (emits) and this client (consumes): the REST snapshot and
-// the server->client WebSocket payloads. The planned home is a shared @crash/contracts package.
-
 export const RoundPhase = {
   BETTING: "BETTING",
   RUNNING: "RUNNING",
@@ -9,8 +6,6 @@ export const RoundPhase = {
 } as const;
 export type RoundPhase = (typeof RoundPhase)[keyof typeof RoundPhase];
 
-// In this pure contracts module (not bet-api) so the feature's logic and tests can use it without
-// pulling the API/auth layer.
 export const BetStatus = {
   PENDING: "PENDING",
   CONFIRMED: "CONFIRMED",
@@ -21,7 +16,6 @@ export const BetStatus = {
 } as const;
 export type BetStatus = (typeof BetStatus)[keyof typeof BetStatus];
 
-// crashPoint is integer hundredths (247 = 2.47x), null until the Round has Crashed.
 export interface RoundSnapshot {
   roundNumber: number;
   phase: RoundPhase;
@@ -31,7 +25,6 @@ export interface RoundSnapshot {
   crashedAt: string | null;
 }
 
-// Server->client events (ADR-0003); mirrors the games gateway's RoundEvent names.
 export const RoundEvent = {
   BETTING_OPENED: "round.betting_opened",
   RUNNING: "round.running",
@@ -66,8 +59,6 @@ export interface CrashedEvent {
   verification: CrashVerification;
 }
 
-// Everything needed to independently verify a past Round: hash serverSeed to check it links to
-// previousSeed, then recompute the Crash Point from the seeds + house edge (ADR-0002).
 export interface RoundVerification {
   roundNumber: number;
   serverSeed: string;

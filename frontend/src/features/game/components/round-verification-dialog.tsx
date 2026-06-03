@@ -17,10 +17,6 @@ import { formatMultiplier } from "@/lib/format";
 import { useRoundVerificationQuery } from "../round-api";
 import { type RoundVerification } from "../round-contracts";
 
-// Recomputes a past Round's fairness entirely in the browser from the revealed seeds, using the
-// exact same @crash/provably-fair functions the server used to generate it (ADR-0002). Nothing here
-// trusts the server's word: the chain link and the Crash Point are both derived locally and then
-// compared, so a ✓ is a genuine independent verification.
 function verify(data: RoundVerification): {
   chainLinkValid: boolean | null;
   recomputedCrashPoint: number;
@@ -45,8 +41,6 @@ function verify(data: RoundVerification): {
   };
 }
 
-// verdict: true = verified (green check), false = mismatch (red cross), null/undefined = an
-// informational row with no verdict (the seeds and house edge are shown, not checked).
 function VerdictRow({
   label,
   verdict,

@@ -15,7 +15,6 @@ const UNIQUE_CONSTRAINT_VIOLATION = "P2002";
 export class PrismaOutboxRepository implements OutboxStore {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Idempotent on the message key: enqueuing the same deterministic key twice is a no-op.
   async enqueue(message: NewOutboxMessage): Promise<void> {
     try {
       await this.prisma.outboxMessage.create({ data: toCreateData(message) });
@@ -35,9 +34,7 @@ export class PrismaOutboxRepository implements OutboxStore {
     maxAttempts: number;
   }): Promise<PendingOutboxMessage[]> {
     const rows = await this.prisma.outboxMessage.findMany({
-      // Most rows give up after maxAttempts so a poison message stops draining. Credits (payout,
-      // refund) are the exception: ADR-0001 makes them unconditional and never abandoned, so a stuck
-      // credit keeps retrying forever (a slow/down wallets only delays it). Commands and replies cap.
+      // Credits (payout/refund) are never abandoned and retry forever; all other message types cap at maxAttempts.
       where: {
         status: OutboxStatus.PENDING,
         OR: [
@@ -79,9 +76,7 @@ export class PrismaOutboxRepository implements OutboxStore {
     if (!row) {
       return;
     }
-    // A non-credit row that exhausts its attempts is parked FAILED; credits keep retrying forever
-    // (ADR-0001). Increment and FAILED flip commit in one update so a crash can't strand the row
-    // PENDING at the cap (invisible to findPending forever); a single relay makes this race-free.
+    // Increment and FAILED-flip in one update so a crash can't strand the row PENDING at the cap; credits keep retrying forever.
     const attempts = row.attempts + 1;
     const isCredit = (CREDIT_ROUTING_KEYS as readonly string[]).includes(
       row.routingKey,

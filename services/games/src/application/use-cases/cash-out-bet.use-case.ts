@@ -16,9 +16,6 @@ import { RoundPhase } from "../../domain/entities/round";
 
 const ONE_X_HUNDREDTHS = 100;
 
-// Cash out is authoritative and synchronous in games (ADR-0001): the server locks the multiplier
-// and enqueues the payout in one transaction, so a player never loses a valid cash out to wallets
-// latency during a crash.
 @Injectable()
 export class CashOutBetUseCase {
   constructor(
@@ -42,13 +39,13 @@ export class CashOutBetUseCase {
     }
 
     const now = new Date();
-    // Clamp to >= 0 so the curve floor is 1.00x even if the clock skews backward.
+    // Clamped >= 0 so the curve floor stays 1.00x even if the clock skews backward.
     const elapsedMs = Math.max(0, now.getTime() - round.startedAt.getTime());
     const lockedHundredths = Math.floor(
       multiplierAt({ elapsedMs }) * ONE_X_HUNDREDTHS,
     );
-    // The persisted phase can lag the engine's crash by a few ms; the curve is the real clock, so if
-    // it already reached the Crash Point the Round has crashed — reject rather than overpay.
+    // The persisted phase can lag the engine's crash by a few ms; the curve is the real clock — if it
+    // already reached the crash point, reject rather than overpay even though the DB phase says RUNNING.
     if (lockedHundredths >= round.crashPointHundredths) {
       throw new CashOutUnavailableError("the Round has crashed");
     }

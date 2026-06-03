@@ -1,9 +1,6 @@
 import { type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-// The casino glass panel: the repeated surface for every board card (stage, bet, participants,
-// history, bet history). Encapsulates the design's panel treatment (rounded-panel, hairline border,
-// translucent card + blur, soft elevation) as one component so the utilities aren't copy-pasted.
 export function Panel({
   className,
   children,

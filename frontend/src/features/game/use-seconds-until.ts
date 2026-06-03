@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-// Live seconds remaining until a target ISO timestamp; null when there is no target.
 export function useSecondsUntil(target: string | null): number | null {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 

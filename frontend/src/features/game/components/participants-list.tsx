@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useParticipantsStore, type Participant } from "../participants-store";
 import { Panel, PanelHeader } from "./panel";
 
-// Cashed-out players (the winners) float to the top, then the rest by stake, biggest first.
 function compareParticipants(a: Participant, b: Participant): number {
   if (a.status !== b.status) {
     return a.status === "cashed_out" ? -1 : 1;

@@ -14,8 +14,6 @@ import {
 import { Panel, PanelHeader } from "./panel";
 import { RoundVerificationDialog } from "./round-verification-dialog";
 
-// Crash Points read at a glance: low rounds (a quick bust) muted-red, the common middle band
-// green, and the rare high multipliers gold.
 function chipClass(multiplier: number): string {
   if (multiplier < 2) return "bg-destructive/15 text-destructive";
   if (multiplier < 10) return "bg-success/15 text-success";
@@ -23,7 +21,6 @@ function chipClass(multiplier: number): string {
 }
 
 export function HistoryStrip({ className }: { className?: string }) {
-  // Page 1 is the live latest ~20 (refreshed by the socket); higher pages browse older rounds.
   const [page, setPage] = useState(1);
   const { data, isPending, isError } = useRoundHistoryQuery(page);
   const [verifyingRound, setVerifyingRound] = useState<number | null>(null);

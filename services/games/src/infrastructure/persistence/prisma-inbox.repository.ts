@@ -50,10 +50,8 @@ export class PrismaInboxRepository implements InboxStore {
       }
       const bet = toDomain(row);
 
-      // A Pending bet confirms only while its Round is still Betting. If the Round already left
-      // Betting, this bet slipped past the startRunning void sweep (a placement that committed after
-      // the sweep): void it now so the confirmation itself is the authoritative deadline check, and
-      // the VOIDED branch below refunds the debited stake.
+      // A Pending bet whose Round already left Betting slipped past the void sweep; void it here so
+      // this confirmation is the authoritative deadline check and the VOIDED branch issues the refund.
       if (bet.status === BetStatus.PENDING) {
         const round = await tx.round.findUnique({
           where: { roundNumber: bet.roundNumber },
@@ -71,8 +69,7 @@ export class PrismaInboxRepository implements InboxStore {
         await tx.bet.update({ where: { betId }, data: { status: bet.status } });
       }
 
-      // Voided but the stake left the wallet: compensate with a Refund (ADR-0001), enqueued in this
-      // transaction so it commits with the dedup key; its refund:{betId} key makes a redelivery a no-op.
+      // Stake already left the wallet; compensate with a Refund enqueued in this same transaction (ADR-0001).
       if (bet.status === BetStatus.VOIDED) {
         const refund = buildRefund({
           betId: bet.betId,
@@ -83,7 +80,7 @@ export class PrismaInboxRepository implements InboxStore {
         return { kind: "refunded", betId: bet.betId };
       }
 
-      // Any other (terminal) state is a no-op; the inbox key still commits so it is not reprocessed.
+      // Terminal state: the inbox key still commits so the message is not reprocessed.
       return { kind: "ignored" };
     });
   }
@@ -105,8 +102,7 @@ export class PrismaInboxRepository implements InboxStore {
         return null;
       }
       const bet = toDomain(row);
-      // Only a Pending bet becomes Rejected. If it is already Voided (the Round moved on before the
-      // rejection arrived), leave it — a rejected debit moved no money, so there is nothing to undo.
+      // If already Voided, leave it: a rejected debit moved no money, so there is nothing to undo.
       if (bet.status !== BetStatus.PENDING) {
         return null;
       }
@@ -116,8 +112,7 @@ export class PrismaInboxRepository implements InboxStore {
     });
   }
 
-  // Scope the duplicate check to this insert so a unique-constraint failure elsewhere in the
-  // transaction (a real anomaly) propagates instead of being mistaken for a redelivery.
+  // Scoped to this insert only: a unique violation elsewhere in the transaction propagates as a real error.
   private async recordKey(
     tx: Prisma.TransactionClient,
     { messageKey, type }: { messageKey: string; type: string },

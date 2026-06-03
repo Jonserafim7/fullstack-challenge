@@ -8,16 +8,7 @@ const FIFTY_TWO_BIT_HEX_LENGTH = 13;
 const FIFTY_TWO_BIT_DENOMINATOR = 2 ** 52;
 const ONE_X_HUNDREDTHS = 100;
 
-// Derives a Round's Crash Point as integer hundredths (ADR-0004): 2.47x is returned as 247,
-// an instant bust as 100. Deterministic from the seeds, so anyone holding the revealed
-// Server Seed and the public Client Seed can recompute and confirm it (ADR-0002).
-//
-// h = HMAC_SHA256(key = serverSeed, msg = clientSeed); X = first 52 bits of h; U = X / 2^52.
-// A `houseEdge` fraction of Rounds bust instantly at 1.00x; the rest follow the canonical
-// 1 / (1 - U) distribution, which makes the return to player exactly (1 - houseEdge).
-//
-// Hashing runs through @noble/hashes (pure JS, synchronous) rather than node:crypto so the
-// exact same code recomputes in the browser, where this is shipped via @crash/provably-fair.
+// h = HMAC_SHA256(serverSeed, clientSeed); U = first-52-bits / 2^52; houseEdge fraction bust instantly; rest: floor(1/(1-U) * 100) (ADR-0002, ADR-0004).
 export function deriveCrashPointHundredths({
   serverSeed,
   clientSeed,

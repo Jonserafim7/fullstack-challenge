@@ -15,10 +15,6 @@ import { RealtimeModule } from "../realtime/realtime.module";
 import { GamesInboxConsumer } from "./games-inbox.consumer";
 import { OutboxRelay } from "./outbox-relay";
 
-// Wires games into RabbitMQ (ADR-0008): asserts the shared crash.events + crash.dlx exchanges and
-// the games dead-letter queue, runs the outbox relay, and hosts the games.inbox consumer that
-// confirms bets from debit replies. Each service asserts the topology it touches, so neither
-// service must boot first.
 @Module({
   imports: [
     EnvModule,
@@ -44,9 +40,7 @@ import { OutboxRelay } from "./outbox-relay";
             routingKey: DeadLetterRoutingKey.GAMES,
             options: { durable: true },
           },
-          // Delay queue for backoff retries: a transiently-failed message is parked here under
-          // `retry.games` with a per-message TTL; when it expires the queue dead-letters it back to
-          // crash.events under `redeliver.games`, which games.inbox also binds. Never consumed.
+          // Never consumed directly: TTL expires → dead-letters back to crash.events as `redeliver.games`.
           {
             name: Queue.GAMES_RETRY,
             exchange: Exchange.EVENTS,

@@ -12,12 +12,8 @@ export type ConfirmationResult =
   | { kind: "refunded"; betId: string }
   | { kind: "ignored" };
 
-// Consumer-side idempotent inbox port (ADR-0001, ADR-0008). Recording the inbound message key and
-// its effect in ONE transaction makes processing exactly-once: a redelivered key violates the inbox
-// primary key, so the whole effect rolls back as a no-op (DuplicateMessageError).
 export abstract class InboxStore {
-  // A still-Pending Bet becomes Confirmed; a Voided Bet (betting closed before the debit landed)
-  // instead enqueues the compensating Refund, in the same transaction as the dedup key.
+  // Message key + effect recorded in ONE transaction: a redelivered key rolls the whole effect back as a no-op.
   abstract recordConfirmation(args: {
     messageKey: string;
     type: string;
@@ -25,8 +21,7 @@ export abstract class InboxStore {
     buildRefund: (bet: RefundableBet) => NewOutboxMessage;
   }): Promise<ConfirmationResult>;
 
-  // Returns the now-Rejected Bet so the caller can notify its owner, or null if the Bet is missing
-  // or no longer Pending (already Voided — a rejected debit moved no money, nothing to undo).
+  // Returns null if already Voided: a rejected debit moved no money, so there is nothing to undo.
   abstract recordRejection(args: {
     messageKey: string;
     type: string;

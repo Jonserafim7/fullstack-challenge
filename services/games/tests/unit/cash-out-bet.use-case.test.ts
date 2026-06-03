@@ -107,12 +107,10 @@ describe("CashOutBet", () => {
     const result = await useCase.execute({ playerId: PLAYER_ID });
 
     expect(result.status).toBe(BetStatus.CASHED_OUT);
-    // ~5s in, the shared curve sits well above 1.00x and below the 10.00x Crash Point.
     const lockedHundredths = result.cashedOutMultiplier!;
     expect(lockedHundredths).toBeGreaterThan(100);
     expect(lockedHundredths).toBeLessThan(round.crashPointHundredths);
 
-    // The payout the use-case enqueued must equal stake × the exact multiplier it locked.
     const expectedPayoutCents = Number(
       Money.fromCents(STAKE_CENTS).times(lockedHundredths).cents,
     );
@@ -136,8 +134,7 @@ describe("CashOutBet", () => {
   });
 
   test("never locks below 1.00x when the elapsed time is non-positive", async () => {
-    // startedAt one second in the future (a backward clock skew): the floor is 1.00x, paying the
-    // stake back — a cash out must never return less than the wager.
+    // startedAt one second in the future (backward clock skew): the multiplier floor is 1.00x — a cash out must never return less than the wager.
     const round = runningRound({
       startedAtMsAgo: -1_000,
       crashPointHundredths: 1_000,
@@ -191,8 +188,7 @@ describe("CashOutBet", () => {
   });
 
   test("rejects when the curve has already reached the Crash Point", async () => {
-    // Started 60s ago against a 1.50x Crash Point: the curve is long past it, so the Round has
-    // crashed even if the phase write lags. Nothing to win.
+    // Started 60s ago against a 1.50x Crash Point: the curve is past it even if the phase write lags.
     const round = runningRound({
       startedAtMsAgo: 60_000,
       crashPointHundredths: 150,

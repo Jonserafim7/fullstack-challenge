@@ -39,8 +39,7 @@ export class RoundResponseDto {
   crashedAt!: string | null;
 }
 
-// The Crash Point is predetermined at open but must stay hidden until the Round Crashes —
-// exposing it earlier would let a client see the outcome before it plays out.
+// Crash Point is null until the round is terminal — revealing it early would expose the outcome.
 export function toRoundResponse(round: Round): RoundResponseDto {
   return {
     roundNumber: round.roundNumber,

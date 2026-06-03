@@ -38,8 +38,7 @@ export class PrismaBetRepository implements BetRepository {
         await tx.outboxMessage.create({ data: toOutboxData(debitMessage) });
       });
     } catch (error) {
-      // The only constraint a caller can violate here is the one-bet-per-Round unique; the debit
-      // message_key is `debit:{fresh betId}`, which never collides.
+      // Only the one-bet-per-Round unique can be violated here; the debit key uses a fresh betId.
       if (isDuplicateKey(error)) {
         throw new BetAlreadyPlacedError();
       }
@@ -78,8 +77,7 @@ export class PrismaBetRepository implements BetRepository {
     const [rows, total] = await Promise.all([
       this.prisma.bet.findMany({
         where,
-        // betId breaks ties on the non-unique createdAt so paging is stable (no row repeated or
-        // skipped across page boundaries when two bets share a timestamp).
+        // betId breaks ties on the non-unique createdAt so paging is stable across page boundaries.
         orderBy: [{ createdAt: "desc" }, { betId: "desc" }],
         take: limit,
         skip: offset,

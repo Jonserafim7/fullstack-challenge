@@ -14,9 +14,6 @@ import { DatabaseModule } from "../persistence/database.module";
 import { OutboxRelay } from "./outbox-relay";
 import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
 
-// Wires wallets into RabbitMQ (ADR-0008): asserts the shared crash.events + crash.dlx exchanges
-// and the wallets dead-letter queue, runs the outbox relay, and hosts the inbox consumer that
-// applies inbound messages exactly once. Each service asserts the topology it touches.
 @Module({
   imports: [
     EnvModule,
@@ -41,9 +38,7 @@ import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
             routingKey: DeadLetterRoutingKey.WALLETS,
             options: { durable: true },
           },
-          // Delay queue for backoff retries: a transiently-failed message is parked here under
-          // `retry.wallets` with a per-message TTL; when it expires the queue dead-letters it back to
-          // crash.events under `redeliver.wallets`, which wallets.inbox also binds. Never consumed.
+          // Delay queue: messages expire here and are dead-lettered back to crash.events under redeliver.wallets. Never consumed directly.
           {
             name: Queue.WALLETS_RETRY,
             exchange: Exchange.EVENTS,

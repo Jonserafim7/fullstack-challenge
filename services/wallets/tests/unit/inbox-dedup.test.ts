@@ -9,10 +9,7 @@ import { DuplicateMessageError } from "../../src/application/errors/duplicate-me
 import type { InboxStore } from "../../src/application/messaging/inbox-store";
 import { DebitWalletUseCase } from "../../src/application/use-cases/debit-wallet.use-case";
 
-// A fake inbox that mimics the database primary-key dedup: the first time a key is recorded it
-// succeeds; a second attempt with the same key throws DuplicateMessageError, exactly as the real
-// Prisma adapter translates a P2002 unique violation. The debit either moves money (records) once or
-// is a no-op — never twice.
+// Throws DuplicateMessageError on a repeated key, mimicking the DB P2002 primary-key dedup.
 function buildInbox(): { inbox: InboxStore; recordedKeys: string[] } {
   const seenKeys = new Set<string>();
   const recordedKeys: string[] = [];

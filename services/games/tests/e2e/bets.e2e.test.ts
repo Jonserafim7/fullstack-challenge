@@ -160,7 +160,6 @@ async function placeBetDuringBetting(
     if (response.status === 202) {
       return (await response.json()) as { betId: string; status: string };
     }
-    // Betting closed mid-request — let this Round finish, then try the next one.
     await sleep(1000);
   }
   throw new Error("could not place a bet during a Betting window");
@@ -228,7 +227,6 @@ describe("bets e2e (through Kong)", () => {
       if (confirmed !== "CONFIRMED") {
         continue;
       }
-      // After the debit the wallet is down by the stake; capture it so we can assert the credit.
       balanceBeforeCashout = await balanceCents(token);
       await waitForPhase("RUNNING", 15_000);
       // Let the multiplier climb clear of 1.00x before cashing out, so the locked multiplier (and
@@ -247,7 +245,7 @@ describe("bets e2e (through Kong)", () => {
     expect(cashed!.cashedOutMultiplier).toBeGreaterThan(100);
     expect(cashed!.payoutCents).toBeGreaterThan(0);
 
-    // The payout credit is asynchronous (ADR-0001); poll until it lands.
+    // The payout credit is asynchronous; poll until it lands.
     const expectedBalance = balanceBeforeCashout + cashed!.payoutCents!;
     const creditDeadline = Date.now() + 15_000;
     let balance = balanceBeforeCashout;
@@ -262,9 +260,6 @@ describe("bets e2e (through Kong)", () => {
   }, 120_000);
 
   test("rejects an insufficient-funds bet through the broker, moving no money", async () => {
-    // The bet must outrun the balance to be refused. The shared wallet sits at or below the max
-    // stake, but a prior run's cashouts could nudge it above; drain in minimum-stake steps (each a
-    // committed debit) only until it dips below, so the wallet stays usable for the other tests.
     const drainDeadline = Date.now() + 90_000;
     while (
       Date.now() < drainDeadline &&
@@ -274,16 +269,12 @@ describe("bets e2e (through Kong)", () => {
       await waitForBetStatus(token, filler.betId, "CONFIRMED", 15_000);
     }
 
-    // Baseline against a quiescent Wallet so a credit still settling from an earlier test cannot be
-    // mistaken for the rejected bet moving money.
     const balanceBefore = await stableBalanceCents(token);
     expect(balanceBefore).toBeLessThan(MAX_STAKE_CENTS);
 
     const placed = await placeBetDuringBetting(token, MAX_STAKE_CENTS);
     expect(placed.status).toBe("PENDING");
 
-    // wallets refuses the debit (insufficient funds) and replies bet.debit-rejected; games marks the
-    // Bet Rejected. The reply travels the real broker, so poll until it lands.
     const finalStatus = await waitForBetStatus(
       token,
       placed.betId,
@@ -292,7 +283,6 @@ describe("bets e2e (through Kong)", () => {
     );
     expect(finalStatus).toBe("REJECTED");
 
-    // A rejected debit moves no money — the balance is exactly what it was before.
     const balanceAfter = await stableBalanceCents(token);
     expect(balanceAfter).toBe(balanceBefore);
   }, 120_000);
@@ -309,7 +299,6 @@ describe("bets e2e (through Kong)", () => {
 
     const balanceAfterConfirm = await stableBalanceCents(token);
 
-    // Do not cash out: let the Round crash. Settlement marks the still-Confirmed bet Lost.
     const finalStatus = await waitForBetStatus(
       token,
       placed.betId,
@@ -318,7 +307,6 @@ describe("bets e2e (through Kong)", () => {
     );
     expect(finalStatus).toBe("LOST");
 
-    // A Lost bet moves no money — the stake already left at debit-on-bet (ADR-0001).
     const balanceAfterLoss = await stableBalanceCents(token);
     expect(balanceAfterLoss).toBe(balanceAfterConfirm);
   }, 90_000);

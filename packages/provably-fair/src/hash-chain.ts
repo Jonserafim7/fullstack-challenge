@@ -13,12 +13,7 @@ function sha256Hex(value: string): string {
   return bytesToHex(sha256(utf8ToBytes(value)));
 }
 
-// Pre-generates a server-seed chain backward from a random terminal seed:
-//   chain[i - 1] = SHA256(chain[i])
-// chain[0] is the genesis Commitment, published before any Round runs; Round r uses
-// chain[r]. Revealing chain[r] after a Round lets anyone check SHA256(chain[r]) == chain[r-1]
-// and walk the links back to the Commitment, so every future Crash Point is locked in
-// advance (ADR-0002).
+// chain[i-1] = SHA256(chain[i]); chain[0] is the genesis Commitment. Revealing chain[r] lets anyone walk the links back to the Commitment (ADR-0002).
 export function createHashChain(options?: {
   length?: number;
   terminalSeed?: string;
@@ -49,8 +44,6 @@ export function createHashChain(options?: {
   };
 }
 
-// The chain link a verifier checks: hashing a revealed Server Seed yields the previous
-// Round's seed, or the genesis Commitment for Round 1.
 export function verifyChainLink({
   serverSeed,
   previousSeed,

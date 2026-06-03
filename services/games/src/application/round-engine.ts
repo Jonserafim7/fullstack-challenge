@@ -19,9 +19,6 @@ import { VoidPendingBetsUseCase } from "./use-cases/void-pending-bets.use-case";
 
 const ONE_X_HUNDREDTHS = 100;
 
-// Drives the continuous Round lifecycle. The Running phase lasts exactly as long as the shared curve
-// takes to reach the Crash Point, so a self-rescheduling chain of timeouts (not a fixed interval)
-// advances and persists each transition.
 @Injectable()
 export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(RoundEngine.name);
@@ -29,8 +26,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   private nextRoundNumber = 1;
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
-  // Test-only scripted Crash Points (CRASH_SCENARIO); null in production, where the Crash Point is
-  // derived from the provably-fair chain instead.
+  // null in production; a test scenario overrides crash-point derivation with a scripted sequence.
   private crashScenario: number[] | null = null;
 
   constructor(
@@ -64,8 +60,6 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     }
   }
 
-  // A previous process may have died mid-Round; force that Round to a terminal state so the
-  // numbering stays clean and it does not masquerade as the current Round forever.
   private async settleDanglingRound(): Promise<void> {
     const current = await this.rounds.findCurrent();
     if (!current || current.isTerminal) {
@@ -129,7 +123,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
       roundNumber: round.roundNumber,
       startedAt: round.startedAt!.toISOString(),
     });
-    // Isolated so a void failure does not stop the round chain (a late debit is still refunded).
+    // Isolated: a void failure must not stop the round chain (a late debit is still refunded).
     try {
       await this.voidPendingBets.execute({ roundNumber: round.roundNumber });
     } catch (error) {
@@ -158,7 +152,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
         houseEdge: round.houseEdge,
       },
     });
-    // Isolated so a settlement failure does not stop the round chain.
+    // Isolated: a settlement failure must not stop the round chain.
     try {
       await this.settleRound.execute({ roundNumber: round.roundNumber });
     } catch (error) {
@@ -172,8 +166,6 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     );
   }
 
-  // The Crash Point for a Round: a scripted value when a test scenario is active, otherwise the
-  // provably-fair value derived from the seeds (ADR-0002).
   private crashPointFor({
     roundNumber,
     serverSeed,
@@ -191,8 +183,7 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     return deriveCrashPointHundredths({ serverSeed, clientSeed, houseEdge });
   }
 
-  // The commitment a client checks a revealed Server Seed against: the previous Round's seed,
-  // or the genesis Commitment for Round 1 (seedForRound rejects round 0).
+  // Round 1 uses the genesis commitment; all other rounds use the previous round's revealed seed.
   private seedHashFor(roundNumber: number): string {
     return roundNumber === 1
       ? this.chain.commitment
@@ -221,8 +212,6 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   }
 }
 
-// Parses CRASH_SCENARIO ("500,150,1000") into Crash Points as integer hundredths, floored at 1.00x.
-// Returns null when unset/empty so the engine falls back to the provably-fair derivation.
 function parseCrashScenario(raw: string | undefined): number[] | null {
   if (!raw) {
     return null;

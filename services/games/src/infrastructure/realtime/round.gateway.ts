@@ -13,9 +13,6 @@ import {
 } from "../../application/realtime/round-event-publisher";
 import { JwtVerifier } from "../auth/jwt-verifier";
 
-// Server -> client only (ADR-0003): phase transitions broadcast to all; bet.rejected goes to a
-// per-player room. JWT validated in connection middleware before the socket joins anything.
-// websocket-only transport lets the upgrade pass cleanly through Kong without the polling handshake.
 @WebSocketGateway({ transports: ["websocket"] })
 export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
   private readonly logger = new Logger(RoundGateway.name);
@@ -41,8 +38,6 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     }
     const playerId = await this.jwt.verify(token);
     socket.data.playerId = playerId;
-    // Join a room named after the player so owner-only events reach every tab this player has open,
-    // and no one else. Public broadcasts still go to all sockets via server.emit.
     await socket.join(playerId);
   }
 
@@ -70,8 +65,7 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     this.emitToPlayer(event.playerId, RoundEvent.BET_REJECTED, event);
   }
 
-  // Transitions emitted before the socket server is ready (during engine bootstrap) have no
-  // possible subscribers, so dropping them is safe — late joiners hydrate via REST.
+  // Transitions emitted before the server is ready have no subscribers; dropping them is safe — late joiners hydrate via REST.
   private broadcast(event: string, payload: object): void {
     if (!this.server) {
       this.logger.warn(`Dropped ${event}: socket server not ready`);
@@ -80,7 +74,6 @@ export class RoundGateway extends RoundEventPublisher implements OnGatewayInit {
     this.server.emit(event, payload);
   }
 
-  // Owner-only delivery: emits to the room the player's sockets joined at the handshake.
   private emitToPlayer(playerId: string, event: string, payload: object): void {
     if (!this.server) {
       this.logger.warn(

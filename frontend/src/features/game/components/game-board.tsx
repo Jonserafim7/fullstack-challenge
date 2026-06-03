@@ -5,11 +5,6 @@ import { BetPanel } from "./bet-panel";
 import { ParticipantsList } from "./participants-list";
 import { BetHistory } from "./bet-history";
 
-// The board inside the app shell. Two columns from 900px up — left ("a rodada"): the stage + recent
-// crash points; right ("apostas"): the bet/cash-out hero, the live round participants, and the
-// player's own bet history. Below 900px the columns flatten (display:contents) into one stream and
-// the `order` utilities reorder it so the bet/cash-out control sits right under the stage, never
-// buried below the participants list.
 export function GameBoard() {
   useRoundSocket();
 

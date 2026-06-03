@@ -7,16 +7,11 @@ import { cn } from "@/lib/utils";
 import { useRoundStore } from "../round-store";
 import { useSecondsUntil } from "../use-seconds-until";
 
-// Drawn off React state (ADR-0006): a requestAnimationFrame loop reads the store via getState() and
-// paints, so the 60fps redraw never re-renders React. The curve is m(t) from @crash/crash-curve, the
-// same function the engine uses to time each Crash, so the line can never drift from the backend.
-
 const RISING_COLOR = "#34d399";
 const CRASHED_COLOR = "#f87171";
 const CRASH_FLASH_MS = 600;
 const CURVE_SAMPLES = 120;
 
-// Ambient glow behind the readout: lime while running, red on crash, faint while idle.
 const LIVE_GLOW =
   "radial-gradient(circle at 50% 54%, rgb(132 255 52 / 0.18), transparent 62%)";
 const CRASHED_GLOW =
@@ -61,8 +56,7 @@ export function MultiplierCanvas() {
 
       if (phase === RoundPhase.RUNNING && startedAt) {
         if (anchoredRound !== roundNumber) {
-          // Anchor t≈0 on receipt; back-dating only places a late joiner at the right point on
-          // the curve (ADR-0003 — no clock sync). min() clamps a server clock that runs ahead.
+          // Anchored at round.running without clock sync (ADR-0003); min() clamps a server clock that runs ahead.
           const serverStartedMs = new Date(startedAt).getTime();
           anchorMs = Math.min(now, serverStartedMs);
           anchoredRound = roundNumber;
@@ -203,8 +197,7 @@ function drawScene(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-  // Before the round starts (betting/idle) there's no curve to draw — only a degenerate point at
-  // the origin, which shows as a stray dot in the corner. Leave the canvas clean until it runs.
+  // Nothing to draw before the round starts — a degenerate origin point shows as a stray dot.
   if (!isTerminal && drawnElapsedMs < 1) {
     return;
   }
@@ -216,8 +209,6 @@ function drawScene(
   const top = padY;
   const bottom = cssHeight - padY;
 
-  // The y-axis ceiling follows the current multiplier with headroom so the rising line always
-  // stays in view; the x-axis fits the whole elapsed window into the width as it grows.
   const ceiling = Math.max(2, displayMultiplier) * 1.15;
   const elapsedDenom = Math.max(drawnElapsedMs, 1);
   const xForTime = (t: number) => left + (t / elapsedDenom) * (right - left);
@@ -226,7 +217,6 @@ function drawScene(
 
   const color = isTerminal ? CRASHED_COLOR : RISING_COLOR;
 
-  // Sample the curve once, then reuse the points for both the fill and the stroke.
   const points: Array<[number, number]> = [];
   for (let i = 0; i <= CURVE_SAMPLES; i++) {
     const t = (i / CURVE_SAMPLES) * drawnElapsedMs;
@@ -244,7 +234,6 @@ function drawScene(
     }
   };
 
-  // Translucent fill under the curve, then the glowing stroke on top.
   tracePath();
   ctx.lineTo(tipX, bottom);
   ctx.lineTo(left, bottom);
@@ -263,7 +252,6 @@ function drawScene(
   ctx.stroke();
   ctx.restore();
 
-  // The crash burst: a red glow at the tip that fades over CRASH_FLASH_MS.
   if (crashFade > 0) {
     ctx.beginPath();
     ctx.arc(tipX, tipY, 6 + 46 * (1 - crashFade), 0, Math.PI * 2);

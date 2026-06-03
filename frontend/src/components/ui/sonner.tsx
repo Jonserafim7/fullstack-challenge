@@ -2,8 +2,6 @@ import { Toaster as SonnerToaster } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 
-// Toasts are themed through sonner's own CSS variables so type-specific states keep the right
-// semantic surface: emerald for cash-out success, red for failures, neutral for everything else.
 export function Toaster(props: ToasterProps) {
   return (
     <SonnerToaster

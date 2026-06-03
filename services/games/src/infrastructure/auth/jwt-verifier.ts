@@ -2,9 +2,6 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { EnvService } from "../env/env.service";
 
-// Validates a Keycloak-issued JWT against the realm's published signing keys (JWKS) and
-// returns the subject (the player's stable id). Shared by the WebSocket gateway, which
-// validates the token on connect (ADR-0003), and any future REST guard.
 @Injectable()
 export class JwtVerifier {
   private readonly jwks: JWTVerifyGetKey;

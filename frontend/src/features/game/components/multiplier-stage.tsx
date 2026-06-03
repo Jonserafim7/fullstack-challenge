@@ -7,9 +7,6 @@ import { cn } from "@/lib/utils";
 import { Panel } from "./panel";
 import { MultiplierCanvas } from "./multiplier-canvas";
 
-// The hero of the left column: the animated curve plus its chrome — round number, the round's
-// provably-fair commitment (the only fairness surface on the board; verification lives in the
-// history dialog), and status pills driven by the real socket connection + round phase.
 export function MultiplierStage({ className }: { className?: string }) {
   const connection = useRoundStore((state) => state.connection);
   const roundNumber = useRoundStore((state) => state.roundNumber);

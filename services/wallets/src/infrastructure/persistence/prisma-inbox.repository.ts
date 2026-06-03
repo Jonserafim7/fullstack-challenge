@@ -47,8 +47,7 @@ export class PrismaInboxRepository implements InboxStore {
     await this.prisma.$transaction(async (tx) => {
       await this.recordKey(tx, { messageKey, type });
 
-      // Conditional UPDATE with a row lock: the `gte` guard is the balance-never-negative invariant
-      // at the row, and it makes concurrent debits on the same wallet safe.
+      // `gte` guard is the balance-never-negative invariant; concurrent debits on the same wallet are safe.
       const amount = BigInt(stakeCents);
       const { count } = await tx.wallet.updateMany({
         where: { playerId, balance: { gte: amount } },
@@ -59,8 +58,7 @@ export class PrismaInboxRepository implements InboxStore {
         return;
       }
 
-      // No row debited: a missing wallet is an anomaly (throw, so it retries/dead-letters);
-      // insufficient funds is a normal outcome, so enqueue the rejection reply in this transaction.
+      // Missing wallet is an anomaly (throws → retry/DLQ); insufficient funds is a normal committed outcome (enqueue rejection reply).
       const wallet = await tx.wallet.findUnique({
         where: { playerId },
         select: { playerId: true },
@@ -86,8 +84,7 @@ export class PrismaInboxRepository implements InboxStore {
     await this.prisma.$transaction(async (tx) => {
       await this.recordKey(tx, { messageKey, type });
 
-      // Credit unconditionally (ADR-0001) — no balance guard. The increment's row lock keeps
-      // concurrent credits/debits on the same wallet safe.
+      // Credits are unconditional — no balance guard.
       const { count } = await tx.wallet.updateMany({
         where: { playerId },
         data: { balance: { increment: BigInt(amountCents) } },
@@ -98,8 +95,7 @@ export class PrismaInboxRepository implements InboxStore {
     });
   }
 
-  // Scope the duplicate check to this insert so a unique-constraint failure elsewhere in the
-  // transaction (a real anomaly) propagates instead of being mistaken for a redelivery.
+  // Scoped to this insert only so a unique-constraint violation elsewhere in the transaction propagates as a real anomaly, not a redelivery.
   private async recordKey(
     tx: Prisma.TransactionClient,
     { messageKey, type }: { messageKey: string; type: string },

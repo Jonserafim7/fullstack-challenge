@@ -15,9 +15,7 @@ interface RecordedCredit {
   amountCents: number;
 }
 
-// A fake inbox mirroring the database primary-key dedup: the first time a key is recorded it keeps
-// the credit; a second attempt with the same key throws DuplicateMessageError, exactly as the real
-// Prisma adapter translates a P2002 unique violation.
+// Throws DuplicateMessageError on a repeated key, mimicking the DB P2002 primary-key dedup.
 function buildInbox(): { inbox: InboxStore; credits: RecordedCredit[] } {
   const seenKeys = new Set<string>();
   const credits: RecordedCredit[] = [];

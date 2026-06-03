@@ -1,9 +1,5 @@
 import { BetStatus, RoundPhase } from "./round-contracts";
 
-// The Bet's display state, derived from its status and the current Round phase — the logic the bet
-// panel renders from. Pure so it can be unit-tested without mounting the panel (ADR-0001):
-//   - a Confirmed bet that never cashed out Loses once the Round is terminal;
-//   - a bet still Pending after Betting closed missed the window and is Voided.
 export interface BetOutcome {
   isRunning: boolean;
   isConfirmed: boolean;

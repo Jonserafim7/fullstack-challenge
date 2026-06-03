@@ -8,11 +8,7 @@ services:
         paths:
           - /games
         strip_path: true
-    # The games service is read-heavy: clients hydrate the round snapshot and history over REST and
-    # open the live WebSocket here, so its ceiling is higher than wallets'. Per-route limits on the
-    # write endpoints (POST /games/bet, /cashout) are intentionally not split out: Kong strips the
-    # matched route prefix, so a more specific /games/bet route would mangle the upstream path —
-    # finer-grained throttling belongs in the application layer.
+    # Higher per-IP ceiling than wallets: games is read-heavy (snapshot/history) and carries the WebSocket.
     plugins:
       - name: rate-limiting
         config:

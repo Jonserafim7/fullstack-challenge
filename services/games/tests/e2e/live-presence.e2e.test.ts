@@ -126,9 +126,7 @@ async function cashOut(
   return { httpStatus: response.status, body };
 }
 
-// Connects like the browser client does — through Kong, websocket transport, JWT in the handshake.
-// Kong's keepalive to the Bun upstream occasionally drops an upgrade, so (as in the browser) we let
-// socket.io reconnect and resolve on the first successful connect, only failing after a timeout.
+// Kong's keepalive to the Bun upstream occasionally drops a WS upgrade; we let socket.io reconnect and resolve on the first successful connect.
 function connect(token: string, timeoutMs = 20_000): Promise<Socket> {
   return new Promise((resolve, reject) => {
     const socket = io(KONG_URL, {
@@ -147,7 +145,6 @@ function connect(token: string, timeoutMs = 20_000): Promise<Socket> {
   });
 }
 
-// Waits until an event matching the predicate has been collected, or times out (returns null).
 async function waitFor<T>(
   collected: T[],
   predicate: (event: T) => boolean,
@@ -164,8 +161,6 @@ async function waitFor<T>(
   return null;
 }
 
-// AC #4: a Bet and a Cash Out placed by one player are broadcast to a *second* client. Player A
-// (player) places and cashes out; player B (player2) only listens and must see both public events.
 describe("live presence e2e (broadcast to a second client)", () => {
   let tokenA: string;
   let tokenB: string;
@@ -228,7 +223,6 @@ describe("live presence e2e (broadcast to a second client)", () => {
 
     expect(cashedBetId).not.toBeNull();
 
-    // The second client must have seen the public confirmation, with A's username and stake.
     const confirmed = await waitFor(
       confirmedOnB,
       (event) => event.betId === cashedBetId,
@@ -238,7 +232,6 @@ describe("live presence e2e (broadcast to a second client)", () => {
     expect(confirmed!.username).toBe("player");
     expect(confirmed!.amountCents).toBe(placedAmountCents);
 
-    // ...and the public cash-out, with the locked multiplier and payout.
     const cashedOut = await waitFor(
       cashedOutOnB,
       (event) => event.betId === cashedBetId,
@@ -246,9 +239,7 @@ describe("live presence e2e (broadcast to a second client)", () => {
     );
     expect(cashedOut).not.toBeNull();
     expect(cashedOut!.username).toBe("player");
-    // A cash-out locks at least 1.00x (100 hundredths) — exactly 1.00x when it lands the instant
-    // Running begins. The locked-multiplier math is covered by bets.e2e; here we only assert the
-    // event reached the second client intact.
+    // A cash-out locks at least 1.00x (100 hundredths) — exactly 1.00x when it lands the instant Running begins.
     expect(cashedOut!.multiplierHundredths).toBeGreaterThanOrEqual(100);
     expect(cashedOut!.payoutCents).toBeGreaterThanOrEqual(STAKE_CENTS);
   }, 120_000);

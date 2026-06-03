@@ -33,7 +33,6 @@ describe("bet store", () => {
 
   test("cashOut only applies to a Confirmed bet and is idempotent", () => {
     placeFreshBet();
-    // A Pending bet cannot cash out.
     store().cashOut({
       betId: "b1",
       cashedOutMultiplier: 200,
@@ -50,7 +49,6 @@ describe("bet store", () => {
     expect(store().bet?.status).toBe(BetStatus.CASHED_OUT);
     expect(store().bet?.payoutCents).toBe(2_000);
 
-    // A second cash out is a no-op — the first locked multiplier stands.
     store().cashOut({
       betId: "b1",
       cashedOutMultiplier: 999,

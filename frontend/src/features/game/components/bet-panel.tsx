@@ -20,12 +20,9 @@ import { formatCents, formatMultiplier } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Panel, PanelHeader } from "./panel";
 
-// The payout credit lands asynchronously after cash out (ADR-0001), so we add it to the balance
-// optimistically and refetch a moment later to reconcile — by then the unconditional credit has
-// landed, so the refetch confirms rather than corrects the optimistic value.
+// Payout credit is async (ADR-0001): optimistically add it then refetch once the credit has landed.
 const BALANCE_RECONCILE_DELAY_MS = 2_000;
 
-// Spread across the R$1–R$1.000 range (not clustered at the low end): ~0.5% / 5% / 25% / 100%.
 const QUICK_STAKES = [
   { label: "R$ 5", value: "5,00" },
   { label: "R$ 50", value: "50,00" },
@@ -42,9 +39,6 @@ export function BetPanel({ className }: { className?: string }) {
   const roundNumber = useRoundStore((state) => state.roundNumber);
   const bet = useBetStore((state) => state.bet);
 
-  // One Bet per Round (CONTEXT.md): if the player has a Bet on the Round in progress, show its
-  // status (and the cash-out control) instead of the form. A Bet left over from a previous Round
-  // falls through to the form.
   const betThisRound = bet && bet.roundNumber === roundNumber ? bet : null;
 
   return (
@@ -83,7 +77,6 @@ function ActiveBetView({ bet }: { bet: ActiveBet }) {
         multiplierHundredths: result.cashedOutMultiplier,
         payoutCents: result.payoutCents,
       });
-      // Optimistic credit: show the winnings now, then reconcile once the async credit lands.
       queryClient.setQueryData<WalletData>(walletQueryKey, (old) =>
         old ? { ...old, balance: old.balance + result.payoutCents! } : old,
       );

@@ -23,10 +23,7 @@ interface RecordedDebit {
   rejectReply: NewOutboxMessage;
 }
 
-// A fake inbox that mimics the database primary-key dedup: the first time a key is recorded it
-// keeps the debit; a second attempt with the same key throws DuplicateMessageError, exactly as
-// the real Prisma adapter translates a P2002 unique violation. The confirm-vs-reject decision is
-// the real adapter's (it depends on the balance), so the use-case just hands both replies down.
+// Throws DuplicateMessageError on a repeated key, mimicking the DB P2002 primary-key dedup.
 function buildInbox(): { inbox: InboxStore; debits: RecordedDebit[] } {
   const seenKeys = new Set<string>();
   const debits: RecordedDebit[] = [];

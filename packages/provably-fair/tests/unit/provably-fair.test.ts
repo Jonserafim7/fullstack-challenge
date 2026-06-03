@@ -2,10 +2,6 @@ import { describe, test, expect } from "bun:test";
 import { createHashChain, verifyChainLink } from "../../src/hash-chain";
 import { deriveCrashPointHundredths } from "../../src/crash-point";
 
-// A fixed terminal seed makes the whole chain deterministic, so these vectors are pinned:
-// recomputing them from the seeds below must always reproduce the same values. They also pin
-// the @noble/hashes output to the historical node:crypto output — if the hashing ever diverged,
-// these vectors would break.
 const TERMINAL_SEED = "a".repeat(64);
 const CLIENT_SEED = "crash-game";
 

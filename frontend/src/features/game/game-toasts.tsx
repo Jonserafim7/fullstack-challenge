@@ -2,9 +2,6 @@ import { toast } from "sonner";
 import { BadgeCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { formatCents, formatMultiplier } from "@/lib/format";
 
-// Centralized game toasts so copy + accent icons stay consistent across the trigger sites
-// (cash-out mutation, BET_REJECTED socket event, crash-while-holding). The toast card is neutral
-// glass (see components/ui/sonner.tsx); the per-toast colour is the lucide icon passed here.
 const successIcon = <BadgeCheckIcon className="size-[18px] text-success" />;
 const errorIcon = (
   <TriangleAlertIcon className="size-[18px] text-destructive" />

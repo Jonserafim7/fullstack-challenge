@@ -1,8 +1,5 @@
 import { NewOutboxMessage } from "./outbox-store";
 
-// Consumer-side idempotent inbox port (ADR-0001, ADR-0008). Recording the inbound message key and
-// its effect in ONE transaction makes processing exactly-once: a redelivered key violates the inbox
-// primary key, so the whole effect rolls back as a no-op (DuplicateMessageError).
 export abstract class InboxStore {
   abstract recordAndEnqueue(args: {
     messageKey: string;
@@ -10,9 +7,7 @@ export abstract class InboxStore {
     outbox: NewOutboxMessage[];
   }): Promise<void>;
 
-  // Debits and enqueues confirmReply, or on insufficient funds moves no money and enqueues
-  // rejectReply — a committed business outcome, not an error. The delta, dedup key, and reply commit
-  // together (ADR-0001). WalletNotFoundError (a genuine anomaly) is left to retry/DLQ.
+  // Insufficient funds is a committed outcome (enqueues rejectReply, moves no money); WalletNotFoundError is an anomaly that throws (retry/DLQ).
   abstract recordDebit(args: {
     messageKey: string;
     type: string;
@@ -22,8 +17,7 @@ export abstract class InboxStore {
     rejectReply: NewOutboxMessage;
   }): Promise<void>;
 
-  // Credits are unconditional (ADR-0001): no balance guard, no reply, they cannot fail on a business
-  // rule, only delay.
+  // Credits are unconditional — no balance guard, cannot fail on a business rule, only delay.
   abstract recordCredit(args: {
     messageKey: string;
     type: string;

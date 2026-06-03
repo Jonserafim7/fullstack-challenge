@@ -8,7 +8,7 @@ export async function fetchCurrentRound(): Promise<RoundSnapshot | null> {
     const { data } = await api.get<RoundSnapshot>("/games/rounds/current");
     return data;
   } catch (error) {
-    // No Round has started yet — the engine is between boot and the first Round.
+    // 404 = no round has started yet (engine is between boot and the first round).
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       return null;
     }
@@ -34,10 +34,6 @@ async function fetchRoundHistory(page: number): Promise<RoundHistoryPage> {
   return data;
 }
 
-// A page of terminal Rounds for the history strip. Page 1 is the most recent ~20, refetched on each
-// round.crashed (the socket hook invalidates the ["rounds","history"] prefix, which matches every
-// page key) so the live page stays current without polling; older pages are browsable via the UI.
-// keepPreviousData avoids the strip flashing empty while the next page loads.
 export function useRoundHistoryQuery(page: number) {
   return useQuery({
     queryKey: [...roundHistoryQueryKey, page],
@@ -55,8 +51,6 @@ async function fetchRoundVerification(
   return data;
 }
 
-// The provably-fair data for one past Round. Only enabled once a Round is selected; the result is
-// immutable (a terminal Round never changes), so it never needs refetching.
 export function useRoundVerificationQuery(roundNumber: number | null) {
   return useQuery({
     queryKey: ["rounds", "verify", roundNumber],

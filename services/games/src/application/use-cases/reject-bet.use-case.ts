@@ -7,8 +7,7 @@ import { DuplicateMessageError } from "../errors/duplicate-message.error";
 import { InboxStore } from "../messaging/inbox-store";
 import { RoundEventPublisher } from "../realtime/round-event-publisher";
 
-// Applies a bet.debit-rejected reply exactly once (ADR-0001), then notifies the owning player
-// privately — the refusal reveals their funds, so it never broadcasts.
+// The refusal reveals the player's balance, so rejection events are never broadcast publicly.
 @Injectable()
 export class RejectBetUseCase {
   private readonly logger = new Logger(RejectBetUseCase.name);

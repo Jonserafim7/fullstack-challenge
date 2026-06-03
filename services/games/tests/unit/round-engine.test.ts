@@ -72,19 +72,16 @@ function buildEngine(
     bettingOpened: (event) => captured.bettingOpened.push(event),
     running: (event) => captured.running.push(event),
     crashed: (event) => captured.crashed.push(event),
-    // The engine never confirms, cashes out, or rejects bets (those are the consumer's and the HTTP
-    // use-case's jobs); no-ops keep the fake satisfying the port.
+    // The engine never confirms, cashes out, or rejects bets; no-ops keep the fake satisfying the port.
     betConfirmed: () => {},
     betCashedOut: () => {},
     betRejected: () => {},
   };
 
-  // The crash timer is pushed far out, so settlement never runs here; a no-op fake suffices.
   const settleRound = {
     execute: async () => {},
   } as unknown as SettleRoundUseCase;
 
-  // The betting timer is pushed far out, so the void at round start never runs here either.
   const voidPendingBets = {
     execute: async () => {},
   } as unknown as VoidPendingBetsUseCase;

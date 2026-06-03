@@ -49,7 +49,6 @@ import {
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 20;
 
-// Kong strips the /games prefix, so these routes are POST /games/bet and GET /games/bets/:betId.
 @ApiTags("bets")
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: "Missing or invalid bearer token." })
