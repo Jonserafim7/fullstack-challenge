@@ -104,6 +104,33 @@ async function waitForPhase(target: string, timeoutMs: number): Promise<void> {
   }
 }
 
+// The Wallet is shared and the saga settles asynchronously (ADR-0001), so a balance read can land
+// mid-settlement. Returns a balance that has held steady for `settleMs`, so the money-invariant
+// assertions ("moving no money") baseline against a quiescent Wallet, not one with a credit still
+// in flight from an earlier test.
+async function stableBalanceCents(
+  token: string,
+  settleMs = 1500,
+  timeoutMs = 20_000,
+): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  let last = await balanceCents(token);
+  let stableSince = Date.now();
+  while (Date.now() < deadline) {
+    await sleep(250);
+    const current = await balanceCents(token);
+    if (current !== last) {
+      last = current;
+      stableSince = Date.now();
+      continue;
+    }
+    if (Date.now() - stableSince >= settleMs) {
+      return current;
+    }
+  }
+  return last;
+}
+
 // Places exactly one Bet during a Betting window. A 409 means the window closed between the phase
 // read and the request (or a stale prior bet on this Round); we wait for the next Round and retry,
 // so only the first 202 ever debits.
@@ -204,6 +231,10 @@ describe("bets e2e (through Kong)", () => {
       // After the debit the wallet is down by the stake; capture it so we can assert the credit.
       balanceBeforeCashout = await balanceCents(token);
       await waitForPhase("RUNNING", 15_000);
+      // Let the multiplier climb clear of 1.00x before cashing out, so the locked multiplier (and
+      // payout) is unambiguously above the stake. If the Round crashes first the cash out returns 409
+      // and the loop retries on a fresh Round.
+      await sleep(800);
       const { httpStatus, body } = await cashOut(token);
       if (httpStatus === 200) {
         cashed = body;
@@ -243,7 +274,9 @@ describe("bets e2e (through Kong)", () => {
       await waitForBetStatus(token, filler.betId, "CONFIRMED", 15_000);
     }
 
-    const balanceBefore = await balanceCents(token);
+    // Baseline against a quiescent Wallet so a credit still settling from an earlier test cannot be
+    // mistaken for the rejected bet moving money.
+    const balanceBefore = await stableBalanceCents(token);
     expect(balanceBefore).toBeLessThan(MAX_STAKE_CENTS);
 
     const placed = await placeBetDuringBetting(token, MAX_STAKE_CENTS);
@@ -260,7 +293,7 @@ describe("bets e2e (through Kong)", () => {
     expect(finalStatus).toBe("REJECTED");
 
     // A rejected debit moves no money — the balance is exactly what it was before.
-    const balanceAfter = await balanceCents(token);
+    const balanceAfter = await stableBalanceCents(token);
     expect(balanceAfter).toBe(balanceBefore);
   }, 120_000);
 
@@ -274,7 +307,7 @@ describe("bets e2e (through Kong)", () => {
     );
     expect(confirmed).toBe("CONFIRMED");
 
-    const balanceAfterConfirm = await balanceCents(token);
+    const balanceAfterConfirm = await stableBalanceCents(token);
 
     // Do not cash out: let the Round crash. Settlement marks the still-Confirmed bet Lost.
     const finalStatus = await waitForBetStatus(
@@ -286,7 +319,7 @@ describe("bets e2e (through Kong)", () => {
     expect(finalStatus).toBe("LOST");
 
     // A Lost bet moves no money — the stake already left at debit-on-bet (ADR-0001).
-    const balanceAfterLoss = await balanceCents(token);
+    const balanceAfterLoss = await stableBalanceCents(token);
     expect(balanceAfterLoss).toBe(balanceAfterConfirm);
   }, 90_000);
 });

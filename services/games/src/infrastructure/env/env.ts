@@ -30,6 +30,12 @@ export const envSchema = z.object({
   // Round timing (milliseconds). Running length always varies with the Crash Point.
   BETTING_DURATION_MS: z.coerce.number().int().positive().default(5000),
   CRASHED_DISPLAY_MS: z.coerce.number().int().positive().default(3000),
+
+  // Test-only. When set (e.g. "500,150,1000"), the engine uses this cyclic sequence of Crash Points
+  // (integer hundredths) instead of deriving them from the provably-fair chain, making each Round's
+  // outcome reproducible for E2E. Unset in production and dev, so the Crash Point stays provably-fair
+  // (ADR-0002). Enabled via docker-compose.e2e.yml.
+  CRASH_SCENARIO: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

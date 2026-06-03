@@ -34,6 +34,17 @@ bun test -t "name"     # run tests matching a name
 
 Tests use the **Bun test runner** (not Jest/Vitest).
 
+### Deterministic E2E
+
+The games E2E asserts on cash outs and on "no money moved", both of which are flaky against a live engine with a random Crash Point and an asynchronous, shared Wallet. Run them against the deterministic profile, which scripts the Crash Point sequence (`CRASH_SCENARIO`) and widens the betting window via `docker-compose.e2e.yml`:
+
+```bash
+bun run docker:up:e2e                        # base stack + e2e overrides (scripted Crash Points)
+cd services/games && bun test tests/e2e
+```
+
+The override is test-only; the base `docker:up` stays provably-fair (Crash Points derived from the chain, ADR-0002).
+
 ## Architecture
 
 Two independent NestJS services behind a Kong API gateway, communicating **asynchronously via RabbitMQ** (never synchronously). The async event design between services is a central evaluation point — model events, flows, and compensation/saga strategies explicitly.

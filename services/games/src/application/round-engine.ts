@@ -31,6 +31,9 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
   private nextRoundNumber = 1;
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
+  // Test-only scripted Crash Points (CRASH_SCENARIO); null in production, where the Crash Point is
+  // derived from the provably-fair chain instead.
+  private crashScenario: number[] | null = null;
 
   constructor(
     private readonly rounds: RoundRepository,
@@ -45,6 +48,12 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
       length: this.env.get("SERVER_CHAIN_LENGTH"),
       terminalSeed: this.env.get("SERVER_TERMINAL_SEED") || undefined,
     });
+    this.crashScenario = parseCrashScenario(this.env.get("CRASH_SCENARIO"));
+    if (this.crashScenario) {
+      this.logger.warn(
+        `CRASH_SCENARIO active (${this.crashScenario.join(", ")}): Crash Points are scripted for testing, not provably-fair.`,
+      );
+    }
     await this.settleDanglingRound();
     this.nextRoundNumber = (await this.rounds.maxRoundNumber()) + 1;
     void this.openNextRound();
@@ -93,7 +102,8 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     const bettingDurationMs = this.env.get("BETTING_DURATION_MS");
     const round = Round.open({
       roundNumber,
-      crashPointHundredths: deriveCrashPointHundredths({
+      crashPointHundredths: this.crashPointFor({
+        roundNumber,
         serverSeed,
         clientSeed,
         houseEdge,
@@ -167,6 +177,25 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
     );
   }
 
+  // The Crash Point for a Round: a scripted value when a test scenario is active, otherwise the
+  // provably-fair value derived from the seeds (ADR-0002).
+  private crashPointFor({
+    roundNumber,
+    serverSeed,
+    clientSeed,
+    houseEdge,
+  }: {
+    roundNumber: number;
+    serverSeed: string;
+    clientSeed: string;
+    houseEdge: number;
+  }): number {
+    if (this.crashScenario) {
+      return this.crashScenario[(roundNumber - 1) % this.crashScenario.length];
+    }
+    return deriveCrashPointHundredths({ serverSeed, clientSeed, houseEdge });
+  }
+
   // The commitment a client checks a revealed Server Seed against: the previous Round's seed,
   // or the genesis Commitment for Round 1 (seedForRound rejects round 0).
   private seedHashFor(roundNumber: number): string {
@@ -195,4 +224,17 @@ export class RoundEngine implements OnApplicationBootstrap, OnModuleDestroy {
       Math.max(0, Math.ceil(delayMs)),
     );
   }
+}
+
+// Parses CRASH_SCENARIO ("500,150,1000") into Crash Points as integer hundredths, floored at 1.00x.
+// Returns null when unset/empty so the engine falls back to the provably-fair derivation.
+function parseCrashScenario(raw: string | undefined): number[] | null {
+  if (!raw) {
+    return null;
+  }
+  const points = raw
+    .split(",")
+    .map((entry) => Number.parseInt(entry.trim(), 10))
+    .filter((value) => Number.isInteger(value) && value >= ONE_X_HUNDREDTHS);
+  return points.length > 0 ? points : null;
 }

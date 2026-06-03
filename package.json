@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "docker:up": "docker compose up",
+    "docker:up:e2e": "docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build",
     "docker:down": "docker compose down",
     "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f",
     "format": "prettier --write .",
