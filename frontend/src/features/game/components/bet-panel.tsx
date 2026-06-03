@@ -7,6 +7,8 @@ import { useRoundStore } from "../round-store";
 import { useBetStore, type ActiveBet } from "../bet-store";
 import { useLiveMultiplier } from "../use-live-multiplier";
 import { BetStatus, cashOutBet, placeBet } from "../bet-api";
+import { deriveBetOutcome } from "../bet-outcome";
+import { isStakeWithinBounds, reaisToCents } from "../stake";
 import {
   notifyBetError,
   notifyCashOutSuccess,
@@ -17,11 +19,6 @@ import { walletQueryKey } from "@/features/wallet";
 import { formatCents, formatMultiplier } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Panel, PanelHeader } from "./panel";
-
-// README stake bounds: R$1,00–R$1.000,00, held as integer cents (ADR-0004). Mirrors the server's
-// MIN/MAX so the button disables before a request that the API would reject anyway.
-const MIN_STAKE_CENTS = 100;
-const MAX_STAKE_CENTS = 100_000;
 
 // The payout credit lands asynchronously after cash out (ADR-0001), so we add it to the balance
 // optimistically and refetch a moment later to reconcile — by then the unconditional credit has
@@ -103,16 +100,10 @@ function ActiveBetView({ bet }: { bet: ActiveBet }) {
     },
   });
 
-  const isRunning = phase === RoundPhase.RUNNING;
-  const isTerminal =
-    phase === RoundPhase.CRASHED || phase === RoundPhase.SETTLED;
-  const isConfirmed = bet.status === BetStatus.CONFIRMED;
-  // Derived (ADR-0001): a Confirmed bet that never cashed out has Lost once the Round is terminal.
-  const isLost = isConfirmed && isTerminal;
-  // Derived (ADR-0001): a bet still Pending once Betting has closed missed the window and is Voided.
-  const isVoided =
-    bet.status === BetStatus.VOIDED ||
-    (bet.status === BetStatus.PENDING && (isRunning || isTerminal));
+  const { isRunning, isConfirmed, isLost, isVoided } = deriveBetOutcome({
+    status: bet.status,
+    phase,
+  });
 
   const canCashOut = isConfirmed && isRunning && !mutation.isPending;
   const potentialPayoutCents =
@@ -229,10 +220,7 @@ function PlaceBetForm() {
 
   const isBetting = phase === RoundPhase.BETTING;
   const stakeCents = reaisToCents(stake);
-  const isStakeValid =
-    stakeCents !== null &&
-    stakeCents >= MIN_STAKE_CENTS &&
-    stakeCents <= MAX_STAKE_CENTS;
+  const isStakeValid = isStakeWithinBounds(stakeCents);
   const showRangeError = !isStakeValid && stake.trim() !== "";
   const canBet = isBetting && isStakeValid && !mutation.isPending;
 
@@ -311,15 +299,6 @@ function PlaceBetForm() {
       )}
     </form>
   );
-}
-
-// pt-BR currency text -> integer cents. Strips thousands dots, treats the comma as the decimal.
-function reaisToCents(value: string): number | null {
-  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
-  if (normalized === "") return null;
-  const reais = Number(normalized);
-  if (!Number.isFinite(reais)) return null;
-  return Math.round(reais * 100);
 }
 
 function betErrorMessage(error: unknown): string {

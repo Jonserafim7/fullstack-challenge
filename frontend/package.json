@@ -6,6 +6,7 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "start": "vite preview --port 3000",
+    "test": "bun test",
     "lint": "eslint .",
     "typecheck": "tsr generate && tsc --noEmit",
     "check": "bun run lint && bun run typecheck"

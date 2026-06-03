@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { BetStatus } from "./bet-api";
+import { BetStatus } from "./round-contracts";
 
 // The client's own latest Bet. Born Pending when POST /games/bet returns 202, flipped to Confirmed
 // when the public bet.confirmed event arrives for this betId. It carries its roundNumber so the

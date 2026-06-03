@@ -11,6 +11,18 @@ export const RoundPhase = {
 } as const;
 export type RoundPhase = (typeof RoundPhase)[keyof typeof RoundPhase];
 
+// The games Bet lifecycle (CONTEXT.md). Kept in this pure contracts module — not in bet-api — so the
+// game feature's logic and its tests can use it without pulling the API/auth layer.
+export const BetStatus = {
+  PENDING: "PENDING",
+  CONFIRMED: "CONFIRMED",
+  REJECTED: "REJECTED",
+  CASHED_OUT: "CASHED_OUT",
+  LOST: "LOST",
+  VOIDED: "VOIDED",
+} as const;
+export type BetStatus = (typeof BetStatus)[keyof typeof BetStatus];
+
 // The REST snapshot a client hydrates from on connect (ADR-0003). crashPoint is in integer
 // hundredths (247 = 2.47x) and stays null until the Round has Crashed.
 export interface RoundSnapshot {
