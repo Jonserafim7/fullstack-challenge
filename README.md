@@ -15,6 +15,11 @@ API, infraestrutura e critérios de avaliação — está preservado em
 ## Como rodar 🐳
 
 ```bash
+# Pré-requisitos: Bun >= 1.x · Docker & Docker Compose
+
+git clone https://github.com/Jonserafim7/fullstack-challenge.git
+cd fullstack-challenge
+
 bun install
 bun run docker:up      # sobe infra + serviços + frontend — comando único, zero passos manuais
 ```
