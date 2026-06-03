@@ -15,7 +15,6 @@ import {
 import { nextRetry } from "../../application/messaging/retry-policy";
 import { CreditWalletUseCase } from "../../application/use-cases/credit-wallet.use-case";
 import { DebitWalletUseCase } from "../../application/use-cases/debit-wallet.use-case";
-import { ProcessInboundMessageUseCase } from "../../application/use-cases/process-inbound-message.use-case";
 import { EnvService } from "../env/env.service";
 
 // The retry attempt count rides in this header so it survives the delay-queue round trip.
@@ -29,7 +28,7 @@ interface AmqpMessageLike {
 // The single consumer on wallets.inbox. It binds every routing key wallets must act on (plus
 // `redeliver.wallets`, which the delay queue dead-letters expired retries back to) and dispatches by
 // message type — one consumer per queue, because two consumers on the same queue would compete and a
-// debit could be delivered to the smoke handler (AMQP routes to the queue, then round-robins its
+// debit could be delivered to the wrong handler (AMQP routes to the queue, then round-robins its
 // consumers regardless of routing key). A successful (or already-seen, deduplicated) message acks;
 // a transient failure is retried with exponential backoff via the delay queue and, once the attempts
 // are exhausted, dead-lettered to crash.dlx (ADR-0001's poison-message path).
@@ -40,7 +39,6 @@ export class WalletsInboxConsumer {
   private readonly retryMaxAttempts: number;
 
   constructor(
-    private readonly processInbound: ProcessInboundMessageUseCase,
     private readonly debitWallet: DebitWalletUseCase,
     private readonly creditWallet: CreditWalletUseCase,
     private readonly amqp: AmqpConnection,
@@ -53,7 +51,6 @@ export class WalletsInboxConsumer {
   @RabbitSubscribe({
     exchange: Exchange.EVENTS,
     routingKey: [
-      RoutingKey.SMOKE_PING,
       RoutingKey.WALLET_DEBIT,
       RoutingKey.WALLET_PAYOUT,
       RoutingKey.WALLET_REFUND,
@@ -134,8 +131,6 @@ export class WalletsInboxConsumer {
       case MessageType.WALLET_PAYOUT:
       case MessageType.WALLET_REFUND:
         return this.creditWallet.handle(envelope);
-      case MessageType.SMOKE_PING:
-        return this.processInbound.handle(envelope);
       default:
         this.logger.warn(`Ignoring message of unknown type ${envelope.type}`);
         return;

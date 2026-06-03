@@ -8,7 +8,6 @@ import {
 } from "@crash/messaging";
 import { CreditWalletUseCase } from "../../application/use-cases/credit-wallet.use-case";
 import { DebitWalletUseCase } from "../../application/use-cases/debit-wallet.use-case";
-import { ProcessInboundMessageUseCase } from "../../application/use-cases/process-inbound-message.use-case";
 import { EnvModule } from "../env/env.module";
 import { EnvService } from "../env/env.service";
 import { DatabaseModule } from "../persistence/database.module";
@@ -66,7 +65,6 @@ import { WalletsInboxConsumer } from "./wallets-inbox.consumer";
   providers: [
     OutboxRelay,
     WalletsInboxConsumer,
-    ProcessInboundMessageUseCase,
     DebitWalletUseCase,
     CreditWalletUseCase,
   ],

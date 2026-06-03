@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 import { CashOutBetUseCase } from "../application/use-cases/cash-out-bet.use-case";
-import { EnqueueSmokePingUseCase } from "../application/use-cases/enqueue-smoke-ping.use-case";
 import { GetBetUseCase } from "../application/use-cases/get-bet.use-case";
 import { GetBetHistoryUseCase } from "../application/use-cases/get-bet-history.use-case";
 import { GetCurrentRoundUseCase } from "../application/use-cases/get-current-round.use-case";
@@ -13,21 +12,14 @@ import { RealtimeModule } from "../infrastructure/realtime/realtime.module";
 import { BetsController } from "./controllers/bets.controller";
 import { HealthController } from "./controllers/health.controller";
 import { RoundsController } from "./controllers/rounds.controller";
-import { SmokeController } from "./controllers/smoke.controller";
 
 @Module({
   imports: [DatabaseModule, AuthModule, RealtimeModule],
-  controllers: [
-    HealthController,
-    RoundsController,
-    SmokeController,
-    BetsController,
-  ],
+  controllers: [HealthController, RoundsController, BetsController],
   providers: [
     GetCurrentRoundUseCase,
     GetRoundHistoryUseCase,
     GetRoundVerificationUseCase,
-    EnqueueSmokePingUseCase,
     PlaceBetUseCase,
     CashOutBetUseCase,
     GetBetUseCase,

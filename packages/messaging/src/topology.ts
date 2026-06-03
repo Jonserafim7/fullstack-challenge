@@ -10,9 +10,9 @@ export const Exchange = {
 export type Exchange = (typeof Exchange)[keyof typeof Exchange];
 
 export const Queue = {
-  // wallets consumes commands it must act on (debit, payout, refund) plus the smoke ping.
+  // wallets consumes the commands it must act on: debit, payout, refund.
   WALLETS_INBOX: "wallets.inbox",
-  // games consumes replies (debit-confirmed, debit-rejected) plus the smoke pong.
+  // games consumes the replies: debit-confirmed, debit-rejected.
   GAMES_INBOX: "games.inbox",
   WALLETS_DLQ: "wallets.dlq",
   GAMES_DLQ: "games.dlq",
@@ -25,11 +25,9 @@ export const Queue = {
 export type Queue = (typeof Queue)[keyof typeof Queue];
 
 // Routing keys are hierarchical so the exchange can fan money movements to the right queue without
-// re-topology. The smoke pair proves the rails (#6); the bet saga (#14) added the debit command and
-// its confirmation reply; #8 added the payout; #7 adds the rejection reply and the refund command.
+// re-topology. The bet saga uses the debit command and its confirmation reply; #8 added the payout;
+// #7 adds the rejection reply and the refund command.
 export const RoutingKey = {
-  SMOKE_PING: "smoke.ping",
-  SMOKE_PONG: "smoke.pong",
   // Command: games asks wallets to debit a bet's stake. Lands on wallets.inbox.
   WALLET_DEBIT: "wallet.debit",
   // Reply: wallets confirms the stake left the wallet. Lands on games.inbox.
@@ -64,8 +62,6 @@ export const CREDIT_ROUTING_KEYS: readonly RoutingKey[] = [
 
 // Message types travel in the envelope and mirror the routing key they ship under.
 export const MessageType = {
-  SMOKE_PING: "smoke.ping",
-  SMOKE_PONG: "smoke.pong",
   WALLET_DEBIT: "wallet.debit",
   BET_DEBIT_CONFIRMED: "bet.debit-confirmed",
   BET_DEBIT_REJECTED: "bet.debit-rejected",

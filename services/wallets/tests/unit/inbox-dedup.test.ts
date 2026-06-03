@@ -1,86 +1,81 @@
 import { describe, expect, test } from "bun:test";
 import {
+  debitKey,
   MessageType,
-  RoutingKey,
-  smokePingKey,
-  smokePongKey,
+  type DebitCommandPayload,
   type MessageEnvelope,
 } from "@crash/messaging";
 import { DuplicateMessageError } from "../../src/application/errors/duplicate-message.error";
 import type { InboxStore } from "../../src/application/messaging/inbox-store";
-import type { NewOutboxMessage } from "../../src/application/messaging/outbox-store";
-import { ProcessInboundMessageUseCase } from "../../src/application/use-cases/process-inbound-message.use-case";
+import { DebitWalletUseCase } from "../../src/application/use-cases/debit-wallet.use-case";
 
 // A fake inbox that mimics the database primary-key dedup: the first time a key is recorded it
-// keeps the enqueued outbox batch; a second attempt with the same key throws DuplicateMessageError,
-// exactly as the real Prisma adapter translates a P2002 unique violation.
-function buildInbox(): {
-  inbox: InboxStore;
-  recordedBatches: NewOutboxMessage[][];
-} {
+// succeeds; a second attempt with the same key throws DuplicateMessageError, exactly as the real
+// Prisma adapter translates a P2002 unique violation. The debit either moves money (records) once or
+// is a no-op — never twice.
+function buildInbox(): { inbox: InboxStore; recordedKeys: string[] } {
   const seenKeys = new Set<string>();
-  const recordedBatches: NewOutboxMessage[][] = [];
+  const recordedKeys: string[] = [];
   const inbox = {
-    recordAndEnqueue: async ({
+    recordDebit: async ({
       messageKey,
-      outbox,
     }: {
       messageKey: string;
-      type: string;
-      outbox: NewOutboxMessage[];
     }): Promise<void> => {
       if (seenKeys.has(messageKey)) {
         throw new DuplicateMessageError(messageKey);
       }
       seenKeys.add(messageKey);
-      recordedBatches.push(outbox);
+      recordedKeys.push(messageKey);
     },
-  } as InboxStore;
-  return { inbox, recordedBatches };
+  } as unknown as InboxStore;
+  return { inbox, recordedKeys };
 }
 
-function smokePing(correlationId: string): MessageEnvelope {
+function debitCommand(betId: string): MessageEnvelope {
+  const payload: DebitCommandPayload = {
+    betId,
+    playerId: "player-1",
+    stakeCents: 1_000,
+  };
   return {
-    messageKey: smokePingKey(correlationId),
-    type: MessageType.SMOKE_PING,
-    payload: { correlationId },
+    messageKey: debitKey(betId),
+    type: MessageType.WALLET_DEBIT,
+    payload,
     occurredAt: new Date().toISOString(),
   };
 }
 
-describe("ProcessInboundMessage (inbox dedup)", () => {
-  test("applies a smoke ping once, enqueuing a single pong reply", async () => {
-    const { inbox, recordedBatches } = buildInbox();
-    const useCase = new ProcessInboundMessageUseCase(inbox);
+describe("DebitWallet (inbox dedup)", () => {
+  test("applies a debit once", async () => {
+    const { inbox, recordedKeys } = buildInbox();
+    const useCase = new DebitWalletUseCase(inbox);
 
-    await useCase.handle(smokePing("abc"));
+    await useCase.handle(debitCommand("bet-1"));
 
-    expect(recordedBatches).toHaveLength(1);
-    expect(recordedBatches[0]).toHaveLength(1);
-    expect(recordedBatches[0]?.[0]?.messageKey).toBe(smokePongKey("abc"));
-    expect(recordedBatches[0]?.[0]?.routingKey).toBe(RoutingKey.SMOKE_PONG);
+    expect(recordedKeys).toEqual([debitKey("bet-1")]);
   });
 
-  test("ignores a redelivered ping with the same key, applying no second effect", async () => {
-    const { inbox, recordedBatches } = buildInbox();
-    const useCase = new ProcessInboundMessageUseCase(inbox);
-    const ping = smokePing("abc");
+  test("ignores a redelivered debit with the same key, moving money once", async () => {
+    const { inbox, recordedKeys } = buildInbox();
+    const useCase = new DebitWalletUseCase(inbox);
+    const command = debitCommand("bet-1");
 
-    await useCase.handle(ping);
-    await useCase.handle(ping);
+    await useCase.handle(command);
+    await useCase.handle(command);
 
-    expect(recordedBatches).toHaveLength(1);
+    expect(recordedKeys).toHaveLength(1);
   });
 
   test("propagates unexpected errors instead of swallowing them", async () => {
     const failingInbox = {
-      recordAndEnqueue: async (): Promise<void> => {
+      recordDebit: async (): Promise<void> => {
         throw new Error("database unreachable");
       },
     } as unknown as InboxStore;
-    const useCase = new ProcessInboundMessageUseCase(failingInbox);
+    const useCase = new DebitWalletUseCase(failingInbox);
 
-    await expect(useCase.handle(smokePing("abc"))).rejects.toThrow(
+    await expect(useCase.handle(debitCommand("bet-1"))).rejects.toThrow(
       "database unreachable",
     );
   });

@@ -1,14 +1,6 @@
 // Builders for the producer-assigned idempotency keys (ADR-0001). Keeping them here means both
 // the producer (writing the outbox row) and the consumer (writing the inbox row) derive the
-// identical key, so a redelivery deduplicates. #14 adds the debit pair; payout/refund follow.
-
-export function smokePingKey(correlationId: string): string {
-  return `smoke:${correlationId}`;
-}
-
-export function smokePongKey(correlationId: string): string {
-  return `smoke-pong:${correlationId}`;
-}
+// identical key, so a redelivery deduplicates.
 
 // The debit command's key: wallets dedups on it so a redelivered debit moves money once.
 export function debitKey(betId: string): string {
