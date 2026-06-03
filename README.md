@@ -39,6 +39,11 @@ Entre as opções aceitas pelo desafio, as escolhas foram: **Prisma** (ORM, em m
 **RabbitMQ** (broker), **Kong** (gateway), **Keycloak** (IdP), e **TanStack Start** (SPA) com
 **Zustand** + **TanStack Query** no frontend. O motivo de cada uma está nos ADRs abaixo.
 
+O Kong também aplica **rate limiting** por IP (plugin `rate-limiting`, policy `local` para o modo
+DB-less): 600 req/min no games (read-heavy: hidratação, histórico e o upgrade do WebSocket) e 300
+req/min no wallets; acima disso o gateway responde `429`. Os limites são generosos de propósito, para
+acomodar clientes de polling sem deixar de barrar abuso.
+
 ---
 
 ## Arquitetura entregue 🏗️

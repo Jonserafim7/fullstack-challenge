@@ -8,6 +8,20 @@ services:
         paths:
           - /games
         strip_path: true
+    # The games service is read-heavy: clients hydrate the round snapshot and history over REST and
+    # open the live WebSocket here, so its ceiling is higher than wallets'. Per-route limits on the
+    # write endpoints (POST /games/bet, /cashout) are intentionally not split out: Kong strips the
+    # matched route prefix, so a more specific /games/bet route would mangle the upstream path —
+    # finer-grained throttling belongs in the application layer.
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 600
+          hour: 12000
+          policy: local
+          limit_by: ip
+          fault_tolerant: true
+          error_code: 429
 
   - name: wallets-service
     url: http://wallets:4002
@@ -16,6 +30,15 @@ services:
         paths:
           - /wallets
         strip_path: true
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 300
+          hour: 6000
+          policy: local
+          limit_by: ip
+          fault_tolerant: true
+          error_code: 429
 
 plugins:
   - name: cors
